@@ -1,0 +1,406 @@
+:root {
+  --bg: #0b0c10;
+  --panel: #131722;
+  --panel-2: #1a2030;
+  --text: #e5e7eb;
+  --muted: #94a3b8;
+  --primary: #60a5fa;
+  --success: #34d399;
+  --danger: #fb7185;
+  --border: #263248;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: "Inter", "Segoe UI", sans-serif;
+  background: radial-gradient(circle at top, #141a28, var(--bg) 55%);
+  color: var(--text);
+}
+.app-shell {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  min-height: 100vh;
+}
+.sidebar {
+  border-right: 1px solid var(--border);
+  padding: 16px;
+}
+.brand-card, .status-card, .card, .score-card, .danger-zone, .drawer-left, .drawer-main-head, .chat-log, .composer {
+  background: rgba(20, 24, 36, 0.85);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+.brand-card, .status-card { padding: 12px; margin-bottom: 12px; }
+.brand-card h1 { margin: 0 0 6px; font-size: 20px; }
+.brand-card p { margin: 0; color: var(--muted); font-size: 13px; }
+.nav-list { display: grid; gap: 8px; margin-bottom: 12px; }
+.nav-list button, .primary-btn {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  border-radius: 12px;
+  cursor: pointer;
+}
+.primary-btn { width: 100%; border-color: var(--primary); color: var(--primary); }
+.main {
+  padding: 20px;
+  display: grid;
+  gap: 16px;
+}
+.section.hidden { display: none; }
+.section-header h2 { margin: 0; }
+.section-header p { margin: 4px 0 0; color: var(--muted); }
+.score-card {
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+#scoreValue { margin: 8px 0 0; font-size: 48px; color: var(--success); }
+#scoreValue.score-negative { color: var(--danger); }
+.action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.action {
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  padding: 14px;
+  background: var(--panel);
+  cursor: pointer;
+}
+.action.success { border-color: #1e8f6a; color: var(--success); }
+.action.danger { border-color: #b9475e; color: var(--danger); }
+.card { padding: 14px; }
+.card-title { margin-bottom: 10px; color: var(--muted); font-size: 13px; text-transform: uppercase; }
+.heat-grid { display: grid; grid-template-columns: repeat(10, 14px); gap: 4px; }
+.heat-square, .mini-heat-square { border-radius: 4px; border: 1px solid #202939; }
+.intel-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; }
+.trend-chart { width: 100%; height: 220px; border: 1px solid var(--border); border-radius: 12px; }
+.ratio-card { text-align: center; }
+.ratio-gauge { width: 160px; height: 160px; }
+.intel-list { margin: 0; padding-left: 16px; }
+.annual-heatmap { display: flex; gap: 3px; overflow: auto; }
+.table-wrap { overflow: auto; }
+table { width: 100%; border-collapse: collapse; }
+th, td { border: 1px solid var(--border); padding: 8px; text-align: left; font-size: 13px; }
+.mode-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.mode-btn, .danger-btn {
+  border: 1px solid var(--border);
+  background: var(--panel);
+  border-radius: 12px;
+  padding: 10px;
+  cursor: pointer;
+  color: var(--text);
+}
+.mode-btn.active { border-color: var(--primary); color: var(--primary); }
+.danger-zone { padding: 14px; border-color: #823446; }
+.danger-btn { border-color: #b9475e; color: var(--danger); }
+.ai-drawer {
+  position: fixed;
+  inset: 18px;
+  margin-left: auto;
+  width: min(980px, calc(100vw - 36px));
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 12px;
+  z-index: 20;
+}
+.ai-drawer.hidden { display: none; }
+.drawer-left, .drawer-main-head, .chat-log, .composer { padding: 12px; }
+.drawer-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+.drawer-actions button { border-radius: 10px; border: 1px solid var(--border); background: var(--panel); color: var(--text); padding: 8px; }
+.conversation-list { display: grid; gap: 8px; max-height: calc(100vh - 180px); overflow: auto; }
+.conversation-item { text-align: left; border: 1px solid var(--border); background: var(--panel); border-radius: 10px; color: var(--text); padding: 8px; cursor: pointer; }
+.conversation-item.active { border-color: var(--primary); }
+.drawer-main { display: grid; grid-template-rows: auto 1fr auto; gap: 10px; }
+.drawer-main-head { display: flex; justify-content: space-between; align-items: center; }
+.chat-log { overflow: auto; max-height: calc(100vh - 260px); }
+.chat-row { margin-bottom: 8px; padding: 10px; border-radius: 12px; border: 1px solid var(--border); background: var(--panel-2); }
+.chat-row.user { border-color: #2a4b78; }
+.chat-row.assistant { border-color: #2a6f60; }
+.composer { display: grid; gap: 8px; }
+.composer-top { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; }
+.composer-modes button { border-radius: 999px; border: 1px solid var(--border); background: var(--panel); color: var(--text); padding: 4px 10px; }
+.composer-modes button.active { border-color: var(--primary); color: var(--primary); }
+.composer-input-row { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: end; }
+#chatInput { border-radius: 12px; border: 1px solid var(--border); background: #0f1420; color: var(--text); padding: 10px; min-height: 64px; resize: none; }
+#sendChatBtn, #stopChatBtn, #closeDrawerBtn {
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  padding: 8px 14px;
+  cursor: pointer;
+}
+#sendChatBtn { border-color: #2a4b78; color: var(--primary); }
+#stopChatBtn { border-color: #b9475e; color: var(--danger); }
+.hidden { display: none !important; }
+.dot { width: 8px; height: 8px; border-radius: 999px; display: inline-block; margin-right: 6px; }
+.dot.success { background: var(--success); }
+.dot.info { background: var(--primary); }
+
+/* =========================================
+   VERCEL DESIGN SYSTEM (LIGHT THEME)
+   ========================================= */
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap');
+
+[data-theme="vercel"] {
+  /* Màu sắc chủ đạo từ Vercel */
+  --bg-color: #ffffff; /* Pure White */
+  --text-main: #171717; /* Vercel Black */
+  --text-muted: #666666; /* Gray 500 */
+  --accent-blue: #0a72ef; /* Develop Blue */
+  --accent-red: #ff5b4f; /* Ship Red */
+
+  /* Phông chữ Geist */
+  font-family: 'Geist', sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-main);
+}
+
+/* Ép các Card dùng kỹ thuật Shadow-as-border */
+[data-theme="vercel"] .card,
+[data-theme="vercel"] .section-header {
+  background: #ffffff !important;
+  border: none !important;
+  border-radius: 8px !important;
+  box-shadow: rgba(0,0,0,0.08) 0px 0px 0px 1px, rgba(0,0,0,0.04) 0px 2px 2px, #fafafa 0px 0px 0px 1px !important; /* Full Card Shadow */
+}
+
+/* Định dạng chữ số điểm khổng lồ: Âm khoảng cách chữ */
+[data-theme="vercel"] #scoreValue {
+  font-family: 'Geist', sans-serif;
+  font-weight: 600;
+  letter-spacing: -2.4px !important; /* Maximum compression */
+  color: var(--text-main) !important;
+}
+
+/* Phông chữ Mono cho khu vực dữ liệu */
+[data-theme="vercel"] input,
+[data-theme="vercel"] #timelineDateInput,
+[data-theme="vercel"] .chat-log {
+  font-family: 'Geist Mono', monospace;
+  background: #ffffff !important;
+  color: var(--text-main) !important;
+  border: none !important;
+  box-shadow: rgba(0,0,0,0.08) 0px 0px 0px 1px !important; /* Border Shadow */
+}
+
+/* Nút bấm Vercel: Đen trắng phân minh */
+[data-theme="vercel"] button {
+  background: #ffffff !important;
+  color: #171717 !important;
+  border: none !important;
+  border-radius: 6px !important;
+  box-shadow: rgb(235, 235, 235) 0px 0px 0px 1px !important;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+[data-theme="vercel"] button:hover {
+  background: #fafafa !important;
+}
+
+/* Nút bấm chính (Call to Action) */
+[data-theme="vercel"] #timelineEvaluateBtn,
+[data-theme="vercel"] .primary-btn {
+  background: #171717 !important; /* Primary Dark */
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+[data-theme="vercel"] #timelineEvaluateBtn:hover {
+  background: #000000 !important;
+}
+
+/* Vòng sáng xanh khi Focus (Accessibility) */
+[data-theme="vercel"] *:focus {
+  outline: 2px solid hsla(212, 100%, 48%, 1) !important; /* Focus Blue */
+}
+
+/* =========================================
+   UX JUICE & GAMIFICATION
+   ========================================= */
+
+/* Gạch ngang mục tiêu đã hoàn thành */
+.card button[data-toggle-id] {
+  transition: all 0.3s ease;
+}
+.card button[data-toggle-id][style*="#10B981"] { 
+  text-decoration: line-through;
+  opacity: 0.5;
+  color: #10B981 !important;
+}
+
+/* Hiệu ứng Glow cho các nút */
+#timelineAddTaskBtn:hover {
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
+  transform: translateY(-1px);
+}
+#timelineEvaluateBtn:hover {
+  box-shadow: 0 0 15px rgba(251, 113, 133, 0.4);
+}
+
+/* Rank chìm ở background */
+body::before {
+  content: attr(data-rank);
+  position: fixed;
+  bottom: -20px;
+  right: -20px;
+  font-size: 150px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.02);
+  z-index: -1;
+  pointer-events: none;
+  font-family: 'Geist', sans-serif;
+  letter-spacing: -5px;
+}
+body:not([data-rank])::before {
+  content: 'NOVICE';
+}
+[data-theme="vercel"] body::before {
+  color: rgba(0, 0, 0, 0.02);
+}
+
+/* Hiệu ứng thở cho Lửa Chuỗi */
+@keyframes pulseFire {
+  0% { opacity: 0.8; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.05); text-shadow: 0 0 8px rgba(251,146,60,0.4); }
+  100% { opacity: 0.8; transform: scale(1); }
+}
+#streakBadge span:first-child {
+  display: inline-block;
+  animation: pulseFire 2s infinite ease-in-out;
+}
+
+/* =========================================
+   RANK & PRESTIGE SYSTEM (GAMIFICATION)
+   ========================================= */
+
+/* Badge Rank tại Sidebar */
+.rank-badge {
+    padding: 3px 12px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-top: 8px;
+    display: inline-block;
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid transparent;
+}
+
+/* Hiệu ứng màu theo từng bậc */
+.rank-iron { background: #475569; color: #cbd5e1; border-color: #64748b; }
+.rank-bronze { 
+    background: linear-gradient(135deg, #a85d1d, #cd7f32); 
+    color: #fff; 
+    box-shadow: 0 0 10px rgba(205, 127, 50, 0.4); 
+}
+.rank-silver { 
+    background: linear-gradient(135deg, #94a3b8, #e2e8f0); 
+    color: #1e293b; 
+    box-shadow: 0 0 10px rgba(226, 232, 240, 0.5); 
+}
+.rank-gold { 
+    background: linear-gradient(135deg, #d97706, #fcd34d); 
+    color: #451a03; 
+    box-shadow: 0 0 15px rgba(251, 191, 36, 0.6); 
+    animation: gold-glow 2s infinite;
+}
+.rank-diamond { 
+    background: linear-gradient(135deg, #0891b2, #a5f3fc); 
+    color: #083344; 
+    animation: diamond-shimmer 2s infinite;
+}
+.rank-master { 
+    background: linear-gradient(135deg, #7c3aed, #c084fc, #7c3aed); 
+    background-size: 200% auto;
+    color: #fff; 
+    box-shadow: 0 0 20px rgba(124, 58, 237, 0.7);
+    animation: master-pulse 1.5s infinite, shine 3s infinite linear;
+}
+
+/* Animations */
+@keyframes gold-glow { 0%, 100% { opacity: 0.8; } 50% { opacity: 1; } }
+@keyframes diamond-shimmer {
+    0%, 100% { box-shadow: 0 0 5px #22d3ee; }
+    50% { box-shadow: 0 0 20px #22d3ee; }
+}
+@keyframes master-pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+@keyframes shine { to { background-position: 200% center; } }
+
+/* Streak Shield Icon */
+#shieldContainer {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 14px;
+    color: #38bdf8;
+    margin-left: 10px;
+}
+
+.shield-active { animation: shield-float 3s infinite ease-in-out; }
+@keyframes shield-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+
+/* =========================================
+   TIKTOK MILESTONE CELEBRATION
+   ========================================= */
+
+#streakMilestoneOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.8);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    flex-direction: column;
+    pointer-events: none;
+}
+
+.milestone-content {
+    text-align: center;
+    animation: tiktok-pop-in 0.6s cubic-bezier(0.17, 0.89, 0.32, 1.49);
+}
+
+.milestone-fire {
+    font-size: 120px;
+    margin-bottom: 10px;
+    display: block;
+    filter: drop-shadow(0 0 20px currentColor);
+}
+
+.milestone-number {
+    font-size: 80px;
+    font-weight: 900;
+    font-family: 'Geist', sans-serif;
+    letter-spacing: -5px;
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+}
+
+.fire-bronze { color: #cd7f32; background-image: linear-gradient(to bottom, #ff7e5f, #feb47b); }
+.fire-silver { color: #e2e8f0; background-image: linear-gradient(to bottom, #bdc3c7, #2c3e50); }
+.fire-gold { color: #fbbf24; background-image: linear-gradient(to bottom, #f83600, #f9d423); }
+.fire-diamond { color: #22d3ee; background-image: linear-gradient(to bottom, #00f2ea, #ff0050); }
+.fire-master { color: #c084fc; background-image: linear-gradient(to bottom, #8e2de2, #4a00e0); }
+
+@keyframes tiktok-pop-in {
+    0% { transform: scale(0) rotate(-20deg); opacity: 0; }
+    70% { transform: scale(1.2) rotate(10deg); opacity: 1; }
+    100% { transform: scale(1) rotate(0deg); }
+}
+
+#streakMilestoneOverlay.fade-out .milestone-content {
+    animation: tiktok-fade-out 0.5s forwards;
+}
+
+@keyframes tiktok-fade-out {
+    to { opacity: 0; transform: scale(1.5); }
+}
+
