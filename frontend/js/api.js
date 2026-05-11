@@ -13,13 +13,14 @@ export async function api(path, options = {}) {
 }
 
 export async function fetchDashboardData() {
-  const [scoreData, historyData, rangeData, analytics] = await Promise.all([
+  const [scoreData, historyData, rangeData, analytics, configData] = await Promise.all([
     api('/score'),
     api('/history?limit=100'),
     api('/history/range?days=365'),
-    api('/analytics')
+    api('/analytics'),
+    api('/config')
   ]);
-  return { scoreData, historyData, rangeData, analytics };
+  return { scoreData, historyData, rangeData, analytics, configData };
 }
 
 export async function logDay(status, notes = null) {
@@ -70,5 +71,12 @@ export async function setPersonalityMode(mode) {
   return api('/config', {
     method: 'POST',
     body: JSON.stringify({ personality_mode: mode })
+  });
+}
+
+export async function updateConfig(payload) {
+  return api('/config', {
+    method: 'POST',
+    body: JSON.stringify(payload)
   });
 }

@@ -1,4 +1,4 @@
-﻿from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -350,11 +350,19 @@ def get_analytics(db: Session = Depends(get_db)):
         {"date": r.timestamp.strftime("%Y-%m-%d"), "score": r.cumulative_score}
         for r in records_30
     ]
+    
+    all_records = db.query(ScoreRecord).all()
+    total_days = len(all_records)
+    total_success_all = sum(1 for r in all_records if r.status == "SUCCESS")
+    overall_rate = round(total_success_all * 100 / total_days) if total_days > 0 else 0
+    
     return {
         "total_score": get_total_score(db),
         "success_30d": total_success,
         "failure_30d": total_failure,
         "trend_30d": trend,
+        "total_days": total_days,
+        "overall_rate": overall_rate,
     }
 
 
@@ -364,8 +372,18 @@ def reset_score(req: ResetRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="confirm must be true")
     db.query(ScoreRecord).delete()
     db.query(TimelineTask).delete()
+    
+    # Reset streak and shields in config
+    streak_config = db.query(AppConfig).filter(AppConfig.key == "discipline_streak").first()
+    if streak_config:
+        streak_config.value = "0"
+        
+    shield_config = db.query(AppConfig).filter(AppConfig.key == "streak_shields").first()
+    if shield_config:
+        shield_config.value = "0"
+
     db.commit()
-    return {"message": "CORE_SCORE_RESET. All history purged."}
+    return {"message": "CORE_SCORE_RESET. All history and gamification state purged."}
 
 
 @app.post("/api/chat")

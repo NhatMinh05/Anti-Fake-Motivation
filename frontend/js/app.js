@@ -1,5 +1,5 @@
 import { state, getActiveConversation } from './state.js';
-import { api, fetchDashboardData, logDay, resetScore, setPersonalityMode } from './api.js';
+import { api, fetchDashboardData, logDay, resetScore, setPersonalityMode, updateConfig } from './api.js';
 import { renderSidebar, bindSidebarNavigation } from '../components/sidebar.js';
 import { renderDashboard, updateScore } from '../components/dashboard.js';
 import { renderIntelFeed } from '../components/intelFeed.js';
@@ -152,12 +152,19 @@ function renderIntel() {
 }
 
 async function refreshAll() {
-  const { scoreData, historyData, rangeData, analytics } = await fetchDashboardData();
+  const { scoreData, historyData, rangeData, analytics, configData } = await fetchDashboardData();
   state.score = scoreData.total_score;
   state.history = historyData;
   state.trend = analytics.trend_30d || [];
   state.success30 = analytics.success_30d || 0;
   state.failure30 = analytics.failure_30d || 0;
+
+  if (configData.discipline_streak !== undefined) {
+    localStorage.setItem('discipline_streak', configData.discipline_streak);
+  }
+  if (configData.streak_shields !== undefined) {
+    localStorage.setItem('streak_shields', configData.streak_shields);
+  }
 
   updateScore(state.score);
   renderHistoryTable();
@@ -166,6 +173,11 @@ async function refreshAll() {
   renderTrendChart();
   renderGauge();
   renderIntel();
+
+  const statTotalDays = document.getElementById('statTotalDays');
+  const statWinRate = document.getElementById('statWinRate');
+  if (statTotalDays) statTotalDays.textContent = analytics.total_days || 0;
+  if (statWinRate) statWinRate.textContent = (analytics.overall_rate || 0) + '%';
 }
 
 function setChatSendingState(sending) {
@@ -249,12 +261,36 @@ function bindEvents() {
   document.getElementById('btnSuccess')?.addEventListener('click', async () => {
     const notes = prompt('Operational notes (optional):') || '';
     await logDay('SUCCESS', notes || null);
+    
+    let streak = parseInt(localStorage.getItem('discipline_streak') || '0', 10);
+    let shields = parseInt(localStorage.getItem('streak_shields') || '0', 10);
+    streak++;
+    if (streak % 10 === 0) shields++;
+    
+    localStorage.setItem('discipline_streak', streak.toString());
+    localStorage.setItem('streak_shields', shields.toString());
+    await updateConfig({ discipline_streak: streak, streak_shields: shields });
     await refreshAll();
   });
 
   document.getElementById('btnFailure')?.addEventListener('click', async () => {
     const notes = prompt('Operational notes (optional):') || '';
     await logDay('FAILURE', notes || null);
+    
+    let shields = parseInt(localStorage.getItem('streak_shields') || '0', 10);
+    if (shields > 0) {
+      if (confirm('THẤT BẠI! Bạn có muốn dùng 1 🛡️ GIÁP để giữ chuỗi không?')) {
+        shields--;
+        localStorage.setItem('streak_shields', shields.toString());
+        await updateConfig({ streak_shields: shields });
+      } else {
+        localStorage.setItem('discipline_streak', '0');
+        await updateConfig({ discipline_streak: 0 });
+      }
+    } else {
+      localStorage.setItem('discipline_streak', '0');
+      await updateConfig({ discipline_streak: 0 });
+    }
     await refreshAll();
   });
 
@@ -262,9 +298,10 @@ function bindEvents() {
     if (!confirm('Confirm reset? This purges all history.')) return;
     await resetScore();
 
-    // VÁ LỖI: Dọn sạch gamification state trên trình duyệt
+    // VÁ LỖI: Dọn sạch gamification state trên trình duyệt và cả Backend
     localStorage.setItem('discipline_streak', '0');
     localStorage.setItem('streak_shields', '0');
+    try { await updateConfig({ discipline_streak: 0, streak_shields: 0 }); } catch (err) { console.error('Failed to reset config on server:', err); }
     const streakEl = document.getElementById('streakCount');
     if (streakEl) streakEl.textContent = '0';
 

@@ -1,4 +1,4 @@
-import { fetchTasks, addTask, toggleTask, deleteTask, evaluateDate } from '../js/api.js';
+import { fetchTasks, addTask, toggleTask, deleteTask, evaluateDate, updateConfig } from '../js/api.js';
 
 const ROAST_MESSAGES = [
   "Thất bại. Lại doomscrolling điện thoại đến 2h sáng chứ gì?",
@@ -76,6 +76,27 @@ function updateRankUI(streak) {
   // Update Watermark Background
   document.body.setAttribute('data-rank', rank.name);
 
+  // Keep rank classes scoped away from mission content to avoid accidental style bleed
+  const dashboardContainer = document.getElementById('dashboard');
+  if (dashboardContainer) {
+    dashboardContainer.classList.remove('rank-iron', 'rank-bronze', 'rank-silver', 'rank-gold', 'rank-diamond', 'rank-master');
+    dashboardContainer.classList.add(rank.class);
+  }
+
+  // Ensure mission streak badge never inherits rank card backgrounds
+  const streakBadge = document.getElementById('streakBadge');
+  if (streakBadge) {
+    streakBadge.classList.remove('rank-iron', 'rank-bronze', 'rank-silver', 'rank-gold', 'rank-diamond', 'rank-master');
+  }
+
+  // Force fire icon to refresh style when rank changes/reset
+  const fireIcon = document.querySelector('#streakBadge .streak-fire-icon');
+  if (fireIcon) {
+    fireIcon.classList.remove('streak-fire-icon');
+    void fireIcon.offsetWidth;
+    fireIcon.classList.add('streak-fire-icon');
+  }
+
   // Update Badge ở Sidebar
   const sidebarBrand = document.querySelector('.brand-card') || document.querySelector('.sidebar-brand');
   if (sidebarBrand) {
@@ -100,32 +121,105 @@ function updateShieldUI() {
 }
 
 function triggerMilestoneCelebration(streak) {
-  const milestones = [5, 10, 20, 30, 50, 100];
-  if (!milestones.includes(streak)) return;
+  const milestones = [5, 10, 20, 30, 50];
+  if (!milestones.includes(streak)) return Promise.resolve();
 
   const overlay = document.getElementById('streakMilestoneOverlay');
   const number = document.getElementById('milestoneNumber');
-  if (!overlay || !number) return;
+  const fireImage = document.getElementById('milestoneFireImage');
+  const body = document.body;
+  if (!overlay || !number || !body) return Promise.resolve();
 
   let tierClass = 'fire-bronze';
-  if (streak >= 50) tierClass = 'fire-master';
-  else if (streak >= 30) tierClass = 'fire-diamond';
-  else if (streak >= 20) tierClass = 'fire-gold';
-  else if (streak >= 10) tierClass = 'fire-silver';
+  let duration = 2000;
+  let intensity = 'intensity-low';
+
+  if (streak >= 50) {
+    tierClass = 'fire-master';
+    intensity = 'intensity-high';
+    duration = 5500;
+  } else if (streak >= 30) {
+    tierClass = 'fire-diamond';
+    intensity = 'intensity-mid';
+    duration = 4000;
+  } else if (streak >= 20) {
+    tierClass = 'fire-gold';
+    intensity = 'intensity-mid';
+    duration = 3000;
+  } else if (streak >= 10) {
+    tierClass = 'fire-silver';
+    intensity = 'intensity-mid';
+    duration = 3000;
+  }
 
   number.textContent = String(streak);
-  number.className = `milestone-number ${tierClass}`;
+  const milestoneContent = document.getElementById('milestoneContent');
+  const sparkleLayer = document.getElementById('sparkleLayer');
+
+  if (milestoneContent) {
+    milestoneContent.className = `milestone-content ${tierClass}`;
+  }
+
+  // Force update SVG gradient colors safely to avoid browser inheritance bugs
+  const stop1 = document.getElementById('stop1');
+  const stop2 = document.getElementById('stop2');
+  const stop3 = document.getElementById('stop3');
+
+  const gradientColors = {
+    'fire-bronze': ['#fff', '#facc15', '#ea580c'],
+    'fire-silver': ['#ffffff', '#e2e8f0', '#94a3b8'],
+    'fire-gold': ['#fff', '#fef08a', '#ca8a04'],
+    'fire-diamond': ['#fff', '#cffafe', '#0891b2'],
+    'fire-master': ['#fff', '#e9d5ff', '#a855f7']
+  };
+
+  if (stop1 && gradientColors[tierClass]) {
+    stop1.setAttribute('stop-color', gradientColors[tierClass][0]);
+    stop2.setAttribute('stop-color', gradientColors[tierClass][1]);
+    stop3.setAttribute('stop-color', gradientColors[tierClass][2]);
+  }
+
+  if (sparkleLayer) {
+    sparkleLayer.innerHTML = '';
+    sparkleLayer.className = `sparkle-layer ${tierClass}`;
+
+    let particleCount = 5;
+    if (streak >= 50) particleCount = 20;
+    else if (streak >= 30) particleCount = 15;
+    else if (streak >= 20) particleCount = 10;
+    else if (streak >= 10) particleCount = 8;
+
+    for (let i = 0; i < particleCount; i++) {
+      const p = document.createElement('div');
+      p.className = 'sparkle-particle';
+      p.style.left = `${Math.random() * 100}%`;
+      p.style.top = `${Math.random() * 100}%`;
+      p.style.animationDelay = `${Math.random() * 2}s`;
+      p.style.animationDuration = `${1 + Math.random() * 1.5}s`;
+      p.textContent = '✦'; // text character allows CSS coloring
+      sparkleLayer.appendChild(p);
+    }
+  }
 
   overlay.classList.remove('fade-out');
   overlay.style.display = 'flex';
 
-  setTimeout(() => {
-    overlay.classList.add('fade-out');
+  // Kích hoạt transition opacity
+  void overlay.offsetWidth;
+  overlay.classList.add('active');
+
+  return new Promise(resolve => {
     setTimeout(() => {
-      overlay.style.display = 'none';
-      overlay.classList.remove('fade-out');
-    }, 500);
-  }, 3000);
+      overlay.classList.remove('active');
+      overlay.classList.add('fade-out');
+      setTimeout(() => {
+        overlay.style.display = 'none';
+        overlay.classList.remove('fade-out');
+        body.classList.remove('intensity-low', 'intensity-mid', 'intensity-high');
+        resolve();
+      }, 500);
+    }, duration);
+  });
 }
 
 export function renderDashboard(container) {
@@ -139,14 +233,19 @@ export function renderDashboard(container) {
         <h2>Mission Control</h2>
         <p>Strict Timeline Execution Protocol</p>
         
-        <div style="display: flex; align-items: center; gap: 16px; margin-top: 8px;">
+        <div style="display: flex; align-items: center; gap: 16px; margin-top: 8px; flex-wrap: wrap;">
           <div style="font-size:36px;font-weight:700;color:#10B981;" id="scoreValue">0</div>
           
           <div id="streakBadge" style="background: rgba(251, 146, 60, 0.1); border: 1px solid #FB923C; color: #FB923C; padding: 4px 12px; border-radius: 9999px; font-size: 14px; font-weight: 600; font-family: 'Geist Mono', monospace; display: flex; align-items: center; gap: 6px;">
-            <span style="font-size: 16px;">🔥</span> 
-            <span id="streakCount">${localStorage.getItem('discipline_streak') || '0'}</span> DAY STREAK
+            <span class="streak-fire-icon" style="font-size: 16px;">🔥</span> 
+            <span id="streakCount">${localStorage.getItem('discipline_streak') || '0'}</span> <span class="streak-text">DAY STREAK</span>
           </div>
           <div id="shieldContainer"></div>
+
+          <div id="quickStats" style="display: flex; gap: 24px; margin-left: auto; font-size: 12px; color: #9CA3AF; text-align: right; border-left: 1px solid #2A2A2A; padding-left: 20px;">
+            <div>TOTAL DAYS<br><strong id="statTotalDays" style="color: #E5E7EB; font-size: 20px; font-family: monospace;">0</strong></div>
+            <div>WIN RATE<br><strong id="statWinRate" style="color: #10B981; font-size: 20px; font-family: monospace;">0%</strong></div>
+          </div>
         </div>
       </header>
 
@@ -204,8 +303,10 @@ export function renderDashboard(container) {
 
       <div class="card" style="background:#131313;border:1px solid #2A2A2A;border-radius:0;">
         <div style="font-size:12px;opacity:0.75;margin-bottom:8px;">TIMELINE GRID</div>
-        <div id="timelineTaskList" style="display:flex;flex-direction:column;gap:8px;"></div>
+        <div id="timelineTaskList" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(150px, 1fr));gap:12px;"></div>
       </div>
+
+
 
       <button id="timelineEvaluateBtn"
         style="width:100%;background:#0E0E0E;border:1px solid #FB7185;color:#FB7185;padding:16px 12px;border-radius:0;font-size:16px;font-weight:700;letter-spacing:0.04em;">
@@ -214,9 +315,22 @@ export function renderDashboard(container) {
 
       <div id="streakMilestoneOverlay">
         <div class="milestone-content" id="milestoneContent">
-          <span class="milestone-fire" id="milestoneFire">🔥</span>
-          <span class="milestone-number" id="milestoneNumber">10</span>
-          <div style="color: white; font-size: 20px; font-weight: 600; margin-top: 20px;">DAY STREAK UNLOCKED!</div>
+          <div class="milestone-flame-container" id="milestoneFlameContainer">
+             <div class="sparkle-layer" id="sparkleLayer"></div>
+             <svg class="milestone-fire-svg" viewBox="0 0 24 24" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <linearGradient id="flameGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" class="stop-1" id="stop1" />
+                        <stop offset="30%" class="stop-2" id="stop2" />
+                        <stop offset="100%" class="stop-3" id="stop3" />
+                    </linearGradient>
+                </defs>
+                <path class="flame-layer-1" d="M11.66 21.99a8.55 8.55 0 0 1-5.07-2.3 8.35 8.35 0 0 1-2.58-6.1c0-2.82 1.34-5.26 3.03-7.23C8.42 4.75 10 3.3 10 1.5c0-.2.25-.3.4-.17a10.63 10.63 0 0 1 4.34 6.75c.18.96.11 1.95-.2 2.87-.2.63.54 1.1 1.05.65.65-.58 1.17-1.3 1.5-2.1.28-.66.45-1.37.5-2.09.03-.31.42-.42.6-.17.9 1.26 1.4 2.8 1.4 4.38 0 4.67-3.72 8.44-8.32 8.44a8.23 8.23 0 0 1-.36-.01z" fill="url(#flameGradient)" />
+                <path class="flame-layer-2" d="M11.5 20c-2.5 0-4.5-2-4.5-4.5 0-1.7 1-3.2 2.5-4 0 1.5 1 2.5 2 2.5s2-1 2-2.5c1.5.8 2.5 2.3 2.5 4 0 2.5-2 4.5-4.5 4.5z" fill="#ffffff" opacity="0.9" />
+             </svg>
+             <div class="streak-number-colossal" id="milestoneNumber">10</div>
+          </div>
+          <div class="unlocked-text">DAY STREAK UNLOCKED!</div>
         </div>
       </div>
     </section>
@@ -251,17 +365,21 @@ export function renderDashboard(container) {
 
   function renderTasks() {
     if (state.tasks.length === 0) {
-      taskList.innerHTML = `<div style="padding:8px 10px;border:1px solid #2A2A2A;background:#0E0E0E;color:#9CA3AF;">NO TASKS LOADED FOR THIS DATE</div>`;
+      taskList.innerHTML = `<div style="padding:12px;border:1px solid #2A2A2A;background:#0E0E0E;color:#9CA3AF;grid-column:1/-1;text-align:center;">NO TASKS LOADED FOR THIS DATE</div>`;
       return;
     }
 
     taskList.innerHTML = state.tasks.map(task => `
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid #2A2A2A;background:#0E0E0E;padding:8px 10px;">
-        <button data-toggle-id="${task.id}" ${state.locked ? 'disabled' : ''} style="flex:1;text-align:left;background:transparent;border:none;color:${task.is_completed ? '#10B981' : '#E5E7EB'};cursor:${state.locked ? 'not-allowed' : 'pointer'};">
-          ${task.is_completed ? '[X]' : '[ ]'} ${escapeHtml(task.description)}
+      <div style="position:relative;display:flex;flex-direction:column;justify-content:space-between;border:1px solid ${task.is_completed ? 'rgba(16,185,129,0.4)' : '#2A2A2A'};background:#0E0E0E;padding:14px;min-height:90px;border-radius:8px;transition:all 0.2s;${task.is_completed ? 'background:rgba(16,185,129,0.05);' : ''}">
+        <button data-toggle-id="${task.id}" ${state.locked ? 'disabled' : ''} style="flex:1;display:flex;flex-direction:column;align-items:flex-start;text-align:left;background:transparent;border:none;color:${task.is_completed ? '#10B981' : '#E5E7EB'};cursor:${state.locked ? 'not-allowed' : 'pointer'};font-family:inherit;padding:0;outline:none;">
+          <div style="font-size:14px;line-height:1.4;margin-right:16px;${task.is_completed ? 'text-decoration:line-through;opacity:0.7;' : ''}">
+             <span style="opacity:0.5;margin-right:4px;">${task.is_completed ? '☑' : '☐'}</span> 
+             ${escapeHtml(task.description)}
+          </div>
+          ${task.is_completed ? '<div style="margin-top:auto;padding-top:16px;color:#10B981;font-size:12px;font-weight:700;display:flex;align-items:center;gap:4px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> Completed</div>' : ''}
         </button>
-        <button data-delete-id="${task.id}" ${state.locked ? 'disabled' : ''} style="background:transparent;border:1px solid #FB7185;color:#FB7185;padding:4px 8px;border-radius:0;cursor:${state.locked ? 'not-allowed' : 'pointer'};">
-          DEL
+        <button data-delete-id="${task.id}" ${state.locked ? 'disabled' : ''} style="position:absolute;top:4px;right:4px;background:transparent;border:none;color:#FB7185;padding:4px 8px;font-size:16px;cursor:${state.locked ? 'not-allowed' : 'pointer'};opacity:0.3;border-radius:4px;transition:opacity 0.2s;" onmouseover="this.style.opacity=1;this.style.background='rgba(251,113,133,0.1)';" onmouseout="this.style.opacity=0.3;this.style.background='transparent';">
+          ×
         </button>
       </div>
     `).join('');
@@ -451,12 +569,12 @@ export function renderDashboard(container) {
 
     try {
       const result = await evaluateDate(state.selectedDate);
-      
+
       // Lấy chuỗi và giáp hiện tại
       let currentStreak = parseInt(localStorage.getItem('discipline_streak') || '0', 10);
       let shields = parseInt(localStorage.getItem('streak_shields') || '0', 10);
       const oldRank = getRankInfo(currentStreak).name;
-      const trigger = window.triggerAICoach || (() => {});
+      const trigger = window.triggerAICoach || (() => { });
 
       if (result.status === 'SUCCESS') {
         evalStatus.textContent = `SUCCESS: Cố gắng tốt lắm!`;
@@ -464,13 +582,16 @@ export function renderDashboard(container) {
         currentStreak++;
 
         const newRank = getRankInfo(currentStreak).name;
-        if (newRank !== oldRank && PROMOTION_MESSAGES[newRank]) {
-          trigger(PROMOTION_MESSAGES[newRank], 'promotion');
-        } else {
-          trigger(`SUCCESS. Tiếp tục duy trì chuỗi ${currentStreak} ngày nào.`, 'success');
-        }
+        const pendingPromotionMessage =
+          newRank !== oldRank && PROMOTION_MESSAGES[newRank]
+            ? PROMOTION_MESSAGES[newRank]
+            : null;
 
-        triggerMilestoneCelebration(currentStreak);
+        await triggerMilestoneCelebration(currentStreak);
+
+        if (pendingPromotionMessage) {
+          trigger(pendingPromotionMessage, 'promotion');
+        }
 
         // Tặng Giáp: Cứ mỗi 10 ngày chuỗi nhận 1 Giáp
         if (currentStreak % 10 === 0) {
@@ -502,10 +623,11 @@ export function renderDashboard(container) {
           trigger('FAILURE. Bạn không có giáp. Chuỗi đã nổ tung.', 'failure');
         }
       }
-      
+
       // Lưu trữ và cập nhật UI
       localStorage.setItem('discipline_streak', currentStreak.toString());
       localStorage.setItem('streak_shields', shields.toString());
+      updateConfig({ discipline_streak: currentStreak, streak_shields: shields }).catch(console.error);
       const streakEl = document.getElementById('streakCount');
       if (streakEl) streakEl.textContent = String(currentStreak);
       updateRankUI(currentStreak);
