@@ -126,6 +126,10 @@ class ResetRequest(BaseModel):
     confirm: bool = False
 
 
+class IntelRequest(BaseModel):
+    timeframe: int = 30
+
+
 # ─── ENDPOINTS ────────────────────────────────────────────────────────────────
 
 @app.get("/api/score")
@@ -459,6 +463,57 @@ def chat_with_coach(req: ChatRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=502, detail=f"DeepSeek API error: {e.status_code}")
     except Exception:
         raise HTTPException(status_code=500, detail="Unexpected AI upstream error")
+
+
+@app.post("/api/intel")
+def generate_intel(req: IntelRequest, db: Session = Depends(get_db)):
+    cutoff_date = datetime.utcnow() - timedelta(days=req.timeframe)
+    records = db.query(ScoreRecord).filter(ScoreRecord.timestamp >= cutoff_date).order_by(ScoreRecord.timestamp.asc()).all()
+    
+    # Calculate execution ratio
+    total_days = req.timeframe
+    success_days = sum(1 for r in records if r.status == 'SUCCESS')
+    ratio = int((success_days / len(records)) * 100) if records else 0
+    
+    # Compile trend data (last N records)
+    trend_data = []
+    for r in records:
+        score_val = 1 if r.status == "SUCCESS" else (-1 if r.status == "FAILURE" else 0)
+        trend_data.append({"date": r.timestamp.strftime("%Y-%m-%d"), "score": score_val})
+        
+    # Generate Actionable Intel via DeepSeek
+    intel_bullets = []
+    if DEEPSEEK_API_KEY:
+        history_str = ", ".join([f"{r.timestamp.strftime('%m-%d')}: {r.status}" for r in records[-14:]])
+        if not history_str:
+            history_str = "No recent data."
+        prompt = (
+            f"You are a strict military AI analyst. The user's execution ratio over the last {req.timeframe} days is {ratio}%. "
+            f"Here is their recent log: {history_str}. "
+            "Write exactly 3 extremely short, punchy bullet points analyzing their discipline and giving a harsh directive. "
+            "Reply in Vietnamese. Start each bullet with a strong emoji. No markdown headers."
+        )
+        try:
+            client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url=DEEPSEEK_BASE_URL, timeout=30)
+            response = client.chat.completions.create(
+                model="deepseek-chat",
+                messages=[{"role": "system", "content": prompt}],
+                max_tokens=250,
+                temperature=0.7,
+            )
+            raw_intel = response.choices[0].message.content
+            intel_bullets = [line.strip() for line in raw_intel.split('\n') if line.strip()]
+        except Exception:
+            intel_bullets = ["⚠️ Trạm phân tích tạm thời mất kết nối. Dựa vào trực giác mà hành động."]
+    else:
+        intel_bullets = ["⚠️ Không có kết nối DeepSeek API để phân tích chuyên sâu."]
+        
+    return {
+        "timeframe": req.timeframe,
+        "ratio": ratio,
+        "trend": trend_data,
+        "intel": intel_bullets[:3]
+    }
 
 
 @app.get("/api/config")

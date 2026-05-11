@@ -80,3 +80,10 @@ export async function updateConfig(payload) {
     body: JSON.stringify(payload)
   });
 }
+
+export async function fetchIntel(timeframe = 30) {
+  return api('/intel', {
+    method: 'POST',
+    body: JSON.stringify({ timeframe })
+  });
+}

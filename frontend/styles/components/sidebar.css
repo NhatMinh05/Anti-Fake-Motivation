@@ -1,0 +1,463 @@
+/* =========================================
+   RANK & PRESTIGE SYSTEM (GAMIFICATION)
+   ========================================= */
+
+/* Badge Rank tại Sidebar */
+.rank-badge {
+  padding: 3px 12px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-top: 8px;
+  display: inline-block;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid transparent;
+}
+
+/* Hiệu ứng màu theo từng bậc */
+.rank-iron {
+  background: #475569;
+  color: #cbd5e1;
+  border-color: #64748b;
+}
+
+.rank-bronze {
+  background: linear-gradient(135deg, #a85d1d, #cd7f32);
+  color: #fff;
+  box-shadow: 0 0 10px rgba(205, 127, 50, 0.4);
+}
+
+.rank-silver {
+  background: linear-gradient(135deg, #94a3b8, #e2e8f0);
+  color: #1e293b;
+  box-shadow: 0 0 10px rgba(226, 232, 240, 0.5);
+}
+
+.rank-gold {
+  background: linear-gradient(135deg, #d97706, #fcd34d);
+  color: #451a03;
+  box-shadow: 0 0 15px rgba(251, 191, 36, 0.6);
+  animation: gold-glow 2s infinite;
+}
+
+.rank-diamond {
+  background: linear-gradient(135deg, #0891b2, #a5f3fc);
+  color: #083344;
+  animation: diamond-shimmer 2s infinite;
+}
+
+.rank-master {
+  background: linear-gradient(135deg, #7c3aed, #c084fc, #7c3aed);
+  background-size: 200% auto;
+  color: #fff;
+  box-shadow: 0 0 20px rgba(124, 58, 237, 0.7);
+  animation: master-pulse 1.5s infinite, shine 3s infinite linear;
+}
+
+/* Animations */
+@keyframes gold-glow {
+
+  0%,
+  100% {
+    opacity: 0.8;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes diamond-shimmer {
+
+  0%,
+  100% {
+    box-shadow: 0 0 5px #22d3ee;
+  }
+
+  50% {
+    box-shadow: 0 0 20px #22d3ee;
+  }
+}
+
+@keyframes master-pulse {
+  0% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.05);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes shine {
+  to {
+    background-position: 200% center;
+  }
+}
+
+/* Streak Shield Icon */
+#shieldContainer {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  color: #38bdf8;
+  margin-left: 10px;
+}
+
+.shield-active {
+  animation: shield-float 3s infinite ease-in-out;
+}
+
+@keyframes shield-float {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+   BRUTALIST / TERMINAL 3D RANK DISPLAY
+   ========================================= */
+
+.brutalist-hud {
+  position: relative;
+  width: 280px;
+  max-width: 92vw;
+  padding: 20px;
+  background-color: #071105;
+  border: 1.5px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0 !important;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden;
+}
+
+.hud-corner {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border: 2px solid;
+}
+
+.top-left {
+  top: -2px;
+  left: -2px;
+  border-right: none;
+  border-bottom: none;
+}
+
+.bottom-right {
+  bottom: -2px;
+  right: -2px;
+  border-left: none;
+  border-top: none;
+}
+
+.rank-3d-model {
+  width: 200px;
+  height: 200px;
+  object-fit: contain;
+  z-index: 2;
+  animation: brutal-float 4s infinite linear;
+}
+
+.hud-data {
+  width: 100%;
+  margin-top: 15px;
+  padding-top: 10px;
+  border-top: 1.5px dashed rgba(255, 255, 255, 0.2);
+  font-family: 'Space Mono', monospace;
+  font-size: 12px;
+  display: flex;
+  justify-content: space-between;
+  text-transform: uppercase;
+}
+
+.rank-green .hud-corner {
+  border-color: #00FF00;
+}
+
+.rank-green .data-value {
+  color: #00FF00;
+  text-shadow: 0 0 15px rgba(0, 255, 0, 0.4);
+}
+
+.rank-green .rank-3d-model {
+  filter: drop-shadow(0 0 20px rgba(0, 255, 0, 0.3));
+}
+
+.rank-bronze .hud-corner {
+  border-color: #CD7F32;
+}
+
+.rank-bronze .data-value {
+  color: #CD7F32;
+  font-weight: 700;
+  text-shadow: 0 0 12px rgba(205, 127, 50, 0.45);
+}
+
+.rank-bronze .rank-3d-model {
+  filter: drop-shadow(0 0 16px rgba(205, 127, 50, 0.35));
+}
+
+.rank-silver .hud-corner {
+  border-color: #E2E8F0;
+}
+
+.rank-silver .data-value {
+  color: #E2E8F0;
+  font-weight: 700;
+  text-shadow: 0 0 12px rgba(226, 232, 240, 0.5);
+}
+
+.rank-silver .rank-3d-model {
+  filter: drop-shadow(0 0 20px rgba(226, 232, 240, 0.4));
+}
+
+.rank-gold .hud-corner {
+  border-color: #FBBF24;
+}
+
+.rank-gold .data-value {
+  color: #FBBF24;
+  font-weight: 700;
+  text-shadow: 0 0 14px rgba(251, 191, 36, 0.55);
+}
+
+.rank-gold .rank-3d-model {
+  filter: drop-shadow(0 0 24px rgba(251, 191, 36, 0.45));
+}
+
+.rank-diamond .hud-corner {
+  border-color: #38BDF8;
+}
+
+.rank-diamond .data-value {
+  color: #67E8F9;
+  font-weight: 700;
+  text-shadow: 0 0 16px rgba(103, 232, 249, 0.62);
+}
+
+.rank-diamond .rank-3d-model {
+  filter: drop-shadow(0 0 28px rgba(56, 189, 248, 0.55));
+}
+
+.rank-inferno .hud-corner {
+  border-color: #FF4500;
+}
+
+.rank-inferno .data-value {
+  color: #FF4500;
+  font-weight: bold;
+  text-shadow: 0 0 15px rgba(255, 69, 0, 0.6);
+}
+
+.rank-inferno .rank-3d-model {
+  filter: drop-shadow(0 0 30px rgba(255, 69, 0, 0.4));
+}
+
+@keyframes brutal-float {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes tiktok-pop-in {
+  0% {
+    transform: scale(0) rotate(-20deg);
+    opacity: 0;
+  }
+
+  70% {
+    transform: scale(1.2) rotate(10deg);
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+#streakMilestoneOverlay.fade-out .milestone-content {
+  animation: tiktok-fade-out 0.5s forwards;
+}
+
+@keyframes tiktok-fade-out {
+  to {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+}
+
+/* Milestone Intensity Layers */
+.intensity-low #streakMilestoneOverlay {
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.intensity-low .milestone-content {
+  transform: scale(0.8);
+}
+
+.intensity-mid #streakMilestoneOverlay {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.intensity-high #streakMilestoneOverlay {
+  background: radial-gradient(circle, rgba(124, 58, 237, 0.3) 0%, rgba(0, 0, 0, 0.9) 100%);
+}
+
+.intensity-high .milestone-fire {
+  animation: master-lightning 0.2s infinite;
+}
+
+@keyframes master-lightning {
+  0% {
+    filter: drop-shadow(0 0 30px #c084fc) brightness(1);
+  }
+
+  50% {
+    filter: drop-shadow(0 0 60px #fff) brightness(1.5);
+    transform: rotate(1deg);
+  }
+
+  100% {
+    filter: drop-shadow(0 0 30px #c084fc) brightness(1);
+  }
+}
+
+/* Rank-based fire icon only (no badge/background override) */
+#streakBadge {
+  background: rgba(251, 146, 60, 0.1) !important;
+  border: 1px solid #FB923C !important;
+  box-shadow: none !important;
+}
+
+#streakBadge #streakCount,
+#streakBadge .streak-text {
+  color: inherit !important;
+}
+
+#streakBadge .streak-fire-icon {
+  display: inline-block;
+  animation: pulseFire 2s infinite ease-in-out;
+  filter: none !important;
+  color: #fb923c;
+  text-shadow: none;
+}
+
+body[data-rank="IRON"] #streakBadge .streak-fire-icon {
+  filter: grayscale(75%) brightness(0.9) !important;
+  color: #94a3b8;
+  text-shadow: 0 0 3px rgba(148, 163, 184, 0.28);
+}
+
+body[data-rank="BRONZE"] #streakBadge .streak-fire-icon {
+  filter: none !important;
+  color: #fb923c;
+  text-shadow: 0 0 7px rgba(251, 146, 60, 0.5);
+}
+
+body[data-rank="SILVER"] #streakBadge .streak-fire-icon {
+  filter: grayscale(100%) brightness(1.7) !important;
+  color: #f8fafc;
+  text-shadow: 0 0 11px rgba(241, 245, 249, 0.92);
+}
+
+body[data-rank="GOLD"] #streakBadge .streak-fire-icon {
+  filter: saturate(1.3) brightness(1.2) !important;
+  color: #facc15;
+  text-shadow: 0 0 15px rgba(250, 204, 21, 1);
+}
+
+body[data-rank="DIAMOND"] #streakBadge .streak-fire-icon {
+  filter: saturate(1.35) brightness(1.2) !important;
+  color: #67e8f9;
+  text-shadow: 0 0 19px rgba(103, 232, 249, 1);
+}
+
+body[data-rank="MASTER"] #streakBadge .streak-fire-icon {
+  filter: saturate(1.45) brightness(1.3) !important;
+  color: #e9d5ff;
+  text-shadow: 0 0 24px rgba(216, 180, 254, 1);
+  animation: pulseFire 1.5s infinite ease-in-out, master-aura 1.2s infinite ease-in-out;
+}
+
+.milestone-fire::after {
+  content: "";
+  position: absolute;
+  width: 130px;
+  height: 130px;
+  border-radius: 999px;
+  pointer-events: none;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.06) 35%, rgba(255, 255, 255, 0) 70%);
+  mix-blend-mode: screen;
+  animation: aura-breathe 1.1s infinite ease-in-out;
+}
+
+@keyframes aura-breathe {
+
+  0%,
+  100% {
+    transform: scale(0.9);
+    opacity: 0.6;
+  }
+
+  50% {
+    transform: scale(1.1);
+    opacity: 0.95;
+  }
+}
+
+@keyframes master-flare {
+  0% {
+    opacity: 0.82;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes master-ring-spin {
+  0% {
+    transform: translateZ(20px) scale(1) rotate(0deg);
+  }
+
+  100% {
+    transform: translateZ(20px) scale(1.08) rotate(360deg);
+  }
+}
+
+@keyframes master-aura {
+
+  0%,
+  100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 12px rgba(192, 132, 252, 0.9));
+  }
+
+  50% {
+    transform: scale(1.08);
+    filter: drop-shadow(0 0 24px rgba(216, 180, 254, 1));
+  }
+}
+
+/* =========================================

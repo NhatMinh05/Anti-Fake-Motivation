@@ -1,0 +1,89 @@
+/* =========================================
+   VERCEL DESIGN SYSTEM (LIGHT THEME)
+   ========================================= */
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap');
+
+[data-theme="vercel"] {
+  /* Màu sắc chủ đạo từ Vercel */
+  --bg-color: #ffffff;
+  /* Pure White */
+  --text-main: #171717;
+  /* Vercel Black */
+  --text-muted: #666666;
+  /* Gray 500 */
+  --accent-blue: #0a72ef;
+  /* Develop Blue */
+  --accent-red: #ff5b4f;
+  /* Ship Red */
+
+  /* Phông chữ Geist */
+  font-family: 'Geist', sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-main);
+}
+
+/* Ép các Card dùng kỹ thuật Shadow-as-border */
+[data-theme="vercel"] .card,
+[data-theme="vercel"] .section-header {
+  background: #ffffff !important;
+  border: none !important;
+  border-radius: 8px !important;
+  box-shadow: rgba(0, 0, 0, 0.08) 0px 0px 0px 1px, rgba(0, 0, 0, 0.04) 0px 2px 2px, #fafafa 0px 0px 0px 1px !important;
+  /* Full Card Shadow */
+}
+
+/* Định dạng chữ số điểm khổng lồ: Âm khoảng cách chữ */
+[data-theme="vercel"] #scoreValue {
+  font-family: 'Geist', sans-serif;
+  font-weight: 600;
+  letter-spacing: -2.4px !important;
+  /* Maximum compression */
+  color: var(--text-main) !important;
+}
+
+/* Phông chữ Mono cho khu vực dữ liệu */
+[data-theme="vercel"] input,
+[data-theme="vercel"] #timelineDateInput,
+[data-theme="vercel"] .chat-log {
+  font-family: 'Geist Mono', monospace;
+  background: #ffffff !important;
+  color: var(--text-main) !important;
+  border: none !important;
+  box-shadow: rgba(0, 0, 0, 0.08) 0px 0px 0px 1px !important;
+  /* Border Shadow */
+}
+
+/* Nút bấm Vercel: Đen trắng phân minh */
+[data-theme="vercel"] button {
+  background: #ffffff !important;
+  color: #171717 !important;
+  border: none !important;
+  border-radius: 6px !important;
+  box-shadow: rgb(235, 235, 235) 0px 0px 0px 1px !important;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+[data-theme="vercel"] button:hover {
+  background: #fafafa !important;
+}
+
+/* Nút bấm chính (Call to Action) */
+[data-theme="vercel"] #timelineEvaluateBtn,
+[data-theme="vercel"] .primary-btn {
+  background: #171717 !important;
+  /* Primary Dark */
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+[data-theme="vercel"] #timelineEvaluateBtn:hover {
+  background: #000000 !important;
+}
+
+/* Vòng sáng xanh khi Focus (Accessibility) */
+[data-theme="vercel"] *:focus {
+  outline: 2px solid hsla(212, 100%, 48%, 1) !important;
+  /* Focus Blue */
+}
+

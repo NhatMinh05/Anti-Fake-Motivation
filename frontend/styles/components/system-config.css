@@ -1,0 +1,140 @@
+.mode-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.mode-btn,
+.danger-btn {
+  border: 1px solid var(--border);
+  background: var(--panel);
+  border-radius: 12px;
+  padding: 10px;
+  cursor: pointer;
+  color: var(--text);
+}
+
+.mode-btn.active {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.danger-zone {
+  padding: 14px;
+  border-color: #823446;
+}
+
+.danger-btn {
+  border-color: #b9475e;
+  color: var(--danger);
+}
+/* =========================================
+   SYSTEM CONFIGURATION MATRIX
+   ========================================= */
+.config-matrix {
+    max-width: 900px;
+    color: #E5E7EB;
+    font-family: 'Space Mono', monospace;
+    padding: 20px 40px;
+}
+
+.config-header { margin-bottom: 30px; border-bottom: 1px solid #2A2A2A; padding-bottom: 15px;}
+.matrix-title { font-size: 24px; font-weight: bold; color: #E5E7EB; margin: 0 0 5px 0; letter-spacing: 2px;}
+.matrix-subtitle { font-size: 12px; color: #9CA3AF; margin: 0; text-transform: uppercase;}
+
+/* Các Khối Chức Năng (Panels) */
+.config-panel {
+    background: #131313;
+    border: 1px solid #2A2A2A;
+    padding: 20px;
+    margin-bottom: 20px;
+    position: relative;
+}
+.panel-label {
+    font-size: 11px;
+    color: #38BDF8; /* Cyan */
+    margin-bottom: 15px;
+    letter-spacing: 1.5px;
+    font-weight: bold;
+}
+.config-panel.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+
+/* 1. AI PERSONA SELECTOR (Radio Buttons Ẩn) */
+.persona-selector { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.persona-option input { display: none; /* Ẩn nút radio mặc định */ }
+.persona-card {
+    display: flex; flex-direction: column;
+    padding: 15px;
+    border: 1px solid #2A2A2A;
+    background: #0E0E0E;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.persona-card .p-title { font-size: 14px; font-weight: bold; color: #E5E7EB; margin-bottom: 5px;}
+.persona-card .p-desc { font-size: 10px; color: #9CA3AF; }
+
+/* Trạng thái được chọn (Active) */
+.persona-option input:checked + .persona-card {
+    border-color: #38BDF8;
+    background: rgba(56, 189, 248, 0.05);
+    box-shadow: inset 0 0 10px rgba(56, 189, 248, 0.1);
+}
+.persona-option input:checked + .persona-card .p-title { color: #38BDF8; text-shadow: 0 0 8px rgba(56,189,248,0.5); }
+
+/* 2. CYBER TOGGLES (Thay cho Checkbox cũ) */
+.toggle-group { display: flex; flex-direction: column; gap: 12px; }
+.cyber-toggle {
+    display: flex; justify-content: space-between; align-items: center;
+    cursor: pointer; padding: 8px 0; border-bottom: 1px dashed #2A2A2A;
+}
+.cyber-toggle .toggle-label { font-size: 13px; color: #E5E7EB; }
+.cyber-toggle input { display: none; }
+.toggle-track {
+    width: 40px; height: 20px;
+    background: #0E0E0E;
+    border: 1px solid #2A2A2A;
+    position: relative; transition: 0.3s;
+}
+.toggle-track::after {
+    content: ''; position: absolute;
+    top: 2px; left: 2px; width: 14px; height: 14px;
+    background: #9CA3AF; transition: 0.3s;
+}
+/* Bật Toggle */
+.cyber-toggle input:checked + .toggle-track { border-color: #10B981; background: rgba(16, 185, 129, 0.2); }
+.cyber-toggle input:checked + .toggle-track::after {
+    background: #10B981; transform: translateX(20px); box-shadow: 0 0 10px #10B981;
+}
+
+/* 3. CYBER DROPDOWN & BUTTONS */
+.cyber-select {
+    width: 100%; padding: 10px;
+    background: #0E0E0E; border: 1px solid #2A2A2A;
+    color: #E5E7EB; font-family: 'Space Mono', monospace; font-size: 13px;
+    appearance: none; outline: none; cursor: pointer;
+}
+.action-buttons { display: flex; gap: 10px; }
+.cyber-btn {
+    padding: 10px 15px; font-family: 'Space Mono', monospace; font-size: 12px;
+    cursor: pointer; border: 1px solid; transition: 0.2s; font-weight: bold;
+}
+.cyber-btn.default { background: #0E0E0E; border-color: #10B981; color: #10B981; }
+.cyber-btn.default:hover { background: #10B981; color: #131313; }
+.cyber-btn.ghost { background: #0E0E0E; border-color: #2A2A2A; color: #E5E7EB; }
+.cyber-btn.ghost:hover { border-color: #E5E7EB; color: #131313; background: #E5E7EB; }
+.cyber-btn.delete { background: #0E0E0E; border-color: #FB7185; color: #FB7185; }
+.cyber-btn.delete:hover { background: rgba(251, 113, 133, 0.1); border-color: #FB7185; }
+
+/* 4. DANGER ZONE (Khu vực nguy hiểm) */
+.danger-zone {
+    border-color: #FB7185;
+    /* Nền sọc Hazard cực ngầu */
+    background: repeating-linear-gradient(45deg, rgba(251, 113, 133, 0.05), rgba(251, 113, 133, 0.05) 10px, transparent 10px, transparent 20px);
+}
+.danger-zone .panel-label.text-red { color: #FB7185; }
+.warning-text { font-size: 12px; color: #FB7185; line-height: 1.5; margin-bottom: 20px; }
+.danger-actions { display: flex; gap: 15px; }
+.cyber-btn.destructive { background: #FB7185; border-color: #FB7185; color: #131313; }
+.cyber-btn.destructive:hover { background: #e11d48; box-shadow: 0 0 15px rgba(251, 113, 133, 0.5); }
+.cyber-btn.ghost-red { background: #0E0E0E; border-color: #FB7185; color: #FB7185; }
+.cyber-btn.ghost-red:hover { background: rgba(251, 113, 133, 0.1); }

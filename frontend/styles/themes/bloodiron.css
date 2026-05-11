@@ -1,0 +1,115 @@
+/* =========================================
+   BLOOD IRON RED — Steel & War Theme
+   ========================================= */
+
+[data-theme="bloodiron"] {
+  --bg: #0c0101;
+  --panel: #1a0505;
+  --panel-2: #200808;
+  --text: #fca5a5;
+  --muted: #7f1d1d;
+  --primary: #f87171;
+  --success: #34d399;
+  --danger: #fca5a5;
+  --border: #7f1d1d;
+
+  background: radial-gradient(circle at top, #1f0404, #0c0101 60%) !important;
+  color: var(--text) !important;
+  font-family: 'Space Mono', monospace !important;
+}
+
+/* Vignette pulse effect */
+[data-theme="bloodiron"]::after {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: radial-gradient(ellipse at center, transparent 60%, rgba(153, 0, 0, 0.12) 100%);
+  pointer-events: none;
+  z-index: 9998;
+  animation: bloodpulse 4s ease-in-out infinite;
+}
+
+@keyframes bloodpulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+/* Cards */
+[data-theme="bloodiron"] .card,
+[data-theme="bloodiron"] .brand-card,
+[data-theme="bloodiron"] .status-card,
+[data-theme="bloodiron"] .score-card,
+[data-theme="bloodiron"] .execution-matrix-container,
+[data-theme="bloodiron"] .pulse-stream-widget {
+  background: rgba(26, 5, 5, 0.9) !important;
+  border: 1px solid #7f1d1d !important;
+  border-radius: 0 !important;
+  box-shadow: 0 0 8px rgba(248, 113, 113, 0.06) !important;
+}
+
+/* Sidebar */
+[data-theme="bloodiron"] .sidebar {
+  border-right: 1px solid #7f1d1d !important;
+  background: #0c0101 !important;
+}
+
+/* Buttons */
+[data-theme="bloodiron"] button {
+  background: #1a0505 !important;
+  color: #f87171 !important;
+  border: 1px solid #7f1d1d !important;
+  border-radius: 0 !important;
+  font-family: 'Space Mono', monospace !important;
+  transition: all 0.15s ease !important;
+}
+
+[data-theme="bloodiron"] button:hover {
+  background: #2d0a0a !important;
+  border-color: #f87171 !important;
+  box-shadow: 0 0 10px rgba(248, 113, 113, 0.3) !important;
+}
+
+/* CTA Button */
+[data-theme="bloodiron"] #timelineEvaluateBtn {
+  background: #7f1d1d !important;
+  color: #fca5a5 !important;
+  border-color: #f87171 !important;
+  box-shadow: 0 0 15px rgba(248, 113, 113, 0.2) !important;
+}
+
+[data-theme="bloodiron"] #timelineEvaluateBtn:hover {
+  box-shadow: 0 0 25px rgba(248, 113, 113, 0.5) !important;
+}
+
+/* Score */
+[data-theme="bloodiron"] #scoreValue {
+  color: #f87171 !important;
+  text-shadow: 0 0 20px rgba(248, 113, 113, 0.5);
+}
+
+/* Text colors */
+[data-theme="bloodiron"] .card-title,
+[data-theme="bloodiron"] .matrix-status,
+[data-theme="bloodiron"] .panel-label {
+  color: #fca5a5 !important;
+}
+
+/* Nav active */
+[data-theme="bloodiron"] .nav-list button.active {
+  border-color: #f87171 !important;
+  color: #f87171 !important;
+  box-shadow: 0 0 8px rgba(248, 113, 113, 0.3) !important;
+}
+
+/* Tables */
+[data-theme="bloodiron"] th, [data-theme="bloodiron"] td {
+  border-color: #7f1d1d !important;
+  color: #fca5a5 !important;
+}
+
+/* Input */
+[data-theme="bloodiron"] input, [data-theme="bloodiron"] textarea, [data-theme="bloodiron"] select {
+  background: #0c0101 !important;
+  color: #fca5a5 !important;
+  border-color: #7f1d1d !important;
+}

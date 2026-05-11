@@ -1,0 +1,381 @@
+
+/* Hiệu ứng thở cho Lửa Chuỗi */
+@keyframes pulseFire {
+  0% {
+    opacity: 0.8;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+    text-shadow: 0 0 8px rgba(251, 146, 60, 0.4);
+  }
+
+  100% {
+    opacity: 0.8;
+    transform: scale(1);
+  }
+}
+
+#streakBadge span:first-child {
+  display: inline-block;
+  animation: pulseFire 2s infinite ease-in-out;
+}
+
+/* =========================================
+   MILESTONE BRILLIANT SVG FLAME EFFECT
+   ========================================= */
+
+#streakMilestoneOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  flex-direction: column;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+#streakMilestoneOverlay.active {
+  opacity: 1;
+}
+
+.milestone-content {
+  text-align: center;
+  animation: pop-in-flicker 0.6s cubic-bezier(0.17, 0.89, 0.32, 1.49);
+}
+
+@keyframes pop-in-flicker {
+  0% { transform: scale(0.5); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.milestone-flame-container {
+    position: relative;
+    width: 250px;
+    height: 300px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    /* Main Glow effect */
+    filter: drop-shadow(0 0 20px var(--glow-1)) 
+            drop-shadow(0 0 40px var(--glow-2)) 
+            drop-shadow(0 0 80px var(--glow-3));
+    animation: brilliant-flicker 1.5s infinite alternate;
+}
+
+.milestone-fire-svg {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+}
+
+.flame-layer-1 { animation: flame-flicker 0.2s infinite alternate; }
+.flame-layer-2 { animation: flame-flicker 0.1s infinite alternate; }
+
+/* Base definitions for CSS variables by Rank */
+.fire-bronze {
+  --stop-1: #fff; --stop-2: #facc15; --stop-3: #ea580c;
+  --glow-1: #facc15; --glow-2: #ea580c; --glow-3: #9a3412;
+  --text-color: #facc15;
+}
+.fire-silver {
+  --stop-1: #ffffff; --stop-2: #e2e8f0; --stop-3: #94a3b8;
+  --glow-1: #ffffff; --glow-2: #cbd5e1; --glow-3: #94a3b8;
+  --text-color: #e2e8f0;
+}
+.fire-gold {
+  --stop-1: #fff; --stop-2: #fef08a; --stop-3: #ca8a04;
+  --glow-1: #fff; --glow-2: #fef08a; --glow-3: #ca8a04;
+  --text-color: #fef08a;
+}
+.fire-diamond {
+  --stop-1: #fff; --stop-2: #cffafe; --stop-3: #0891b2;
+  --glow-1: #fff; --glow-2: #cffafe; --glow-3: #0891b2;
+  --text-color: #cffafe;
+}
+.fire-master {
+  --stop-1: #fff; --stop-2: #e9d5ff; --stop-3: #a855f7;
+  --glow-1: #fff; --glow-2: #e9d5ff; --glow-3: #a855f7;
+  --text-color: #e9d5ff;
+}
+
+/* Specific scale adjustments to make it cooler */
+.fire-diamond .milestone-fire-svg { transform: scale(1.1); }
+.fire-master .milestone-fire-svg { transform: scale(1.2); }
+
+.stop-1 { stop-color: var(--stop-1); }
+.stop-2 { stop-color: var(--stop-2); }
+.stop-3 { stop-color: var(--stop-3); }
+
+/* --- Colossal Floating Number '10' --- */
+.streak-number-colossal {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: 'Space Grotesk', 'Geist', sans-serif;
+    font-size: 150px;
+    font-weight: 900;
+    color: var(--text-color);
+    text-shadow: 0 0 10px var(--glow-1),
+                 0 0 20px var(--glow-2),
+                 0 0 30px var(--glow-3);
+    letter-spacing: -5px;
+    opacity: 0.9;
+    z-index: 10;
+    animation: brilliant-float 2s infinite alternate ease-in-out;
+}
+
+/* --- Unlocked Text --- */
+.unlocked-text {
+    font-family: 'Space Mono', monospace;
+    font-size: 24px;
+    font-weight: bold;
+    color: var(--text-color);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    text-shadow: 0 0 5px var(--glow-3);
+    margin-top: -10px;
+}
+
+/* --- Keyframe Animations --- */
+@keyframes brilliant-flicker {
+    0% {
+        filter: drop-shadow(0 0 20px var(--glow-1)) drop-shadow(0 0 40px var(--glow-2)) drop-shadow(0 0 80px var(--glow-3));
+        transform: scale(1);
+    }
+    100% {
+        filter: drop-shadow(0 0 25px var(--glow-1)) drop-shadow(0 0 50px var(--glow-2)) drop-shadow(0 0 100px var(--glow-3));
+        transform: scale(1.02);
+    }
+}
+
+@keyframes brilliant-float {
+    0% { transform: translate(-50%, -50%) translateY(0); }
+    100% { transform: translate(-50%, -50%) translateY(-10px); }
+}
+
+@keyframes flame-flicker {
+    0% { opacity: 0.8; }
+    50% { opacity: 1; }
+    100% { opacity: 0.9; }
+}
+
+/* Sparkles! */
+.sparkle-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.sparkle-particle {
+  position: absolute;
+  font-size: 24px;
+  color: var(--text-color);
+  opacity: 0;
+  animation: sparkle-float infinite linear;
+  text-shadow: 0 0 10px var(--glow-2);
+}
+
+@keyframes sparkle-float {
+  0% { transform: translateY(0) scale(0); opacity: 0; }
+  20% { transform: translateY(-20px) scale(1); opacity: 1; }
+  80% { transform: translateY(-80px) scale(1); opacity: 1; }
+  100% { transform: translateY(-100px) scale(0); opacity: 0; }
+}
+
+/* =========================================
+/* =========================================
+   MILESTONE SIMPLE GENTLE FLAME EFFECT
+   ========================================= */
+
+.milestone-flame-container {
+  position: relative;
+  width: 250px;
+  height: 250px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 0 auto;
+}
+
+.simple-flame {
+  position: absolute;
+  bottom: 30px;
+  width: 160px;
+  height: 160px;
+  border-radius: 0 50% 50% 50%;
+  transform: rotate(45deg);
+  z-index: 1;
+  animation: gentle-burn 1.5s ease-in-out infinite alternate;
+}
+
+/* Inner flame */
+.simple-flame::after {
+  content: '';
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  width: 90px;
+  height: 90px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 0 50% 50% 50%;
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.4);
+}
+
+@keyframes gentle-burn {
+  0% {
+    transform: rotate(45deg) scale(0.95);
+    border-radius: 5% 50% 50% 50%;
+  }
+
+  100% {
+    transform: rotate(45deg) scale(1.05);
+    border-radius: 0 50% 50% 50%;
+  }
+}
+
+/* Color variations based on rank using CSS gradients */
+.simple-flame.fire-bronze {
+  background: linear-gradient(135deg, #facc15 0%, #ea580c 100%);
+  box-shadow: 0 0 50px rgba(234, 88, 12, 0.6);
+}
+
+.simple-flame.fire-silver {
+  background: linear-gradient(135deg, #ffffff 0%, #94a3b8 100%);
+  box-shadow: 0 0 50px rgba(255, 255, 255, 0.6);
+}
+
+.simple-flame.fire-gold {
+  background: linear-gradient(135deg, #fef08a 0%, #ca8a04 100%);
+  box-shadow: 0 0 50px rgba(234, 179, 8, 0.6);
+}
+
+.simple-flame.fire-diamond {
+  background: linear-gradient(135deg, #cffafe 0%, #0891b2 100%);
+  box-shadow: 0 0 50px rgba(6, 182, 212, 0.6);
+}
+
+.simple-flame.fire-master {
+  background: linear-gradient(135deg, #e9d5ff 0%, #7e22ce 100%);
+  box-shadow: 0 0 60px rgba(168, 85, 247, 0.8);
+}
+
+/* Sparkles! */
+.sparkle-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.sparkle-particle {
+  position: absolute;
+  font-size: 24px;
+  color: white;
+  opacity: 0;
+  animation: sparkle-float infinite linear;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+}
+
+@keyframes sparkle-float {
+  0% {
+    transform: translateY(0) scale(0);
+    opacity: 0;
+  }
+
+  20% {
+    transform: translateY(-20px) scale(1);
+    opacity: 1;
+  }
+
+  80% {
+    transform: translateY(-80px) scale(1);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateY(-100px) scale(0);
+    opacity: 0;
+  }
+}
+
+/* Colorize sparkles based on rank */
+.sparkle-layer.fire-bronze .sparkle-particle {
+  color: #facc15;
+}
+
+.sparkle-layer.fire-silver .sparkle-particle {
+  color: #ffffff;
+}
+
+.sparkle-layer.fire-gold .sparkle-particle {
+  color: #fef08a;
+  text-shadow: 0 0 15px #eab308;
+}
+
+.sparkle-layer.fire-diamond .sparkle-particle {
+  color: #cffafe;
+  text-shadow: 0 0 20px #06b6d4;
+}
+
+.sparkle-layer.fire-master .sparkle-particle {
+  color: #f3e8ff;
+  text-shadow: 0 0 25px #a855f7;
+  font-size: 28px;
+}
+
+.milestone-number {
+  position: relative !important;
+  z-index: 10 !important;
+  font-size: 140px !important;
+  font-weight: 900 !important;
+  color: white !important;
+  text-shadow: 0 4px 30px rgba(0, 0, 0, 0.9), 0 0 50px rgba(255, 255, 255, 0.5) !important;
+  font-family: 'Geist', sans-serif !important;
+  display: block !important;
+  background: none !important;
+  -webkit-text-fill-color: white !important;
+  letter-spacing: -5px;
+}
+
+@keyframes shake {
+  0% { transform: translate(1px, 1px) rotate(0deg); }
+  10% { transform: translate(-1px, -2px) rotate(-1deg); }
+  20% { transform: translate(-3px, 0px) rotate(1deg); }
+  30% { transform: translate(3px, 2px) rotate(0deg); }
+  40% { transform: translate(1px, -1px) rotate(1deg); }
+  50% { transform: translate(-1px, 2px) rotate(-1deg); }
+  60% { transform: translate(-3px, 1px) rotate(0deg); }
+  70% { transform: translate(3px, 1px) rotate(-1deg); }
+  80% { transform: translate(-1px, -1px) rotate(1deg); }
+  90% { transform: translate(1px, 2px) rotate(0deg); }
+  100% { transform: translate(1px, -2px) rotate(-1deg); }
+}
+
+.screen-shake {
+  animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both;
+}
+

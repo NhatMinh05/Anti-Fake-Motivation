@@ -1,0 +1,178 @@
+:root {
+  --bg: #0b0c10;
+  --panel: #131722;
+  --panel-2: #1a2030;
+  --text: #e5e7eb;
+  --muted: #94a3b8;
+  --primary: #60a5fa;
+  --success: #34d399;
+  --danger: #fb7185;
+  --border: #263248;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Inter", "Segoe UI", sans-serif;
+  background: radial-gradient(circle at top, #141a28, var(--bg) 55%);
+  color: var(--text);
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  min-height: 100vh;
+}
+
+.sidebar {
+  border-right: 1px solid var(--border);
+  padding: 16px;
+}
+
+.brand-card,
+.status-card,
+.card,
+.score-card,
+.danger-zone,
+.drawer-left,
+.drawer-main-head,
+.chat-log,
+.composer {
+  background: rgba(20, 24, 36, 0.85);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+
+.brand-card,
+.status-card {
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.brand-card h1 {
+  margin: 0 0 6px;
+  font-size: 20px;
+}
+
+.brand-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.nav-list {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.nav-list button,
+.primary-btn {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.primary-btn {
+  width: 100%;
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.main {
+  padding: 20px;
+  display: grid;
+  gap: 16px;
+}
+
+.section.hidden {
+  display: none;
+}
+
+.section-header h2 {
+  margin: 0;
+}
+
+.section-header p {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+
+.score-card {
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+#scoreValue {
+  margin: 8px 0 0;
+  font-size: 48px;
+  color: var(--success);
+}
+
+#scoreValue.score-negative {
+  color: var(--danger);
+}
+
+.action-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.action {
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  padding: 14px;
+  background: var(--panel);
+  cursor: pointer;
+}
+
+.action.success {
+  border-color: #1e8f6a;
+  color: var(--success);
+}
+
+.action.danger {
+  border-color: #b9475e;
+  color: var(--danger);
+}
+
+.card {
+  padding: 14px;
+}
+
+.card-title {
+  margin-bottom: 10px;
+  color: var(--muted);
+  font-size: 13px;
+  text-transform: uppercase;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  display: inline-block;
+  margin-right: 6px;
+}
+
+.dot.success {
+  background: var(--success);
+}
+
+.dot.info {
+  background: var(--primary);
+}
+

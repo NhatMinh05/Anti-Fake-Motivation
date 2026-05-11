@@ -309,8 +309,9 @@ export function renderDashboard(container) {
 
 
       <button id="timelineEvaluateBtn"
-        style="width:100%;background:#0E0E0E;border:1px solid #FB7185;color:#FB7185;padding:16px 12px;border-radius:0;font-size:16px;font-weight:700;letter-spacing:0.04em;">
-        [ EXECUTE EVALUATION PROTOCOL ]
+        style="position:relative;overflow:hidden;width:100%;background:#0E0E0E;border:1px solid #FB7185;color:#FB7185;padding:16px 12px;border-radius:0;font-size:16px;font-weight:700;letter-spacing:0.04em;cursor:pointer;user-select:none;touch-action:none;">
+        <div id="evaluateProgress" style="position:absolute;top:0;left:0;height:100%;width:0%;background:rgba(251,113,133,0.3);pointer-events:none;"></div>
+        <span style="position:relative;z-index:1;pointer-events:none;">[ HOLD TO EXECUTE EVALUATION PROTOCOL ]</span>
       </button>
 
       <div id="streakMilestoneOverlay">
@@ -554,23 +555,76 @@ export function renderDashboard(container) {
 
   evaluateBtn.style.transition = 'all 0.1s ease';
 
-  evaluateBtn.addEventListener('click', async () => {
-    if (state.locked) return;
+  let holdTimer = null;
+  let progressInterval = null;
+  let isExecuting = false;
+  const evaluateProgress = root.querySelector('#evaluateProgress');
 
-    // Hiệu ứng click nút
+  function cancelHold() {
+    if (isExecuting || state.locked) return;
+    clearTimeout(holdTimer);
+    clearInterval(progressInterval);
+    if (evaluateProgress) {
+        evaluateProgress.style.transition = 'width 0.3s ease';
+        evaluateProgress.style.width = '0%';
+    }
+    evaluateBtn.style.transform = 'scale(1)';
+  }
+
+  evaluateBtn.addEventListener('mousedown', startHold);
+  evaluateBtn.addEventListener('touchstart', startHold);
+  
+  evaluateBtn.addEventListener('mouseup', cancelHold);
+  evaluateBtn.addEventListener('mouseleave', cancelHold);
+  evaluateBtn.addEventListener('touchend', cancelHold);
+
+  function startHold(e) {
+    if (e.type === 'mousedown' && e.button !== 0) return;
+    if (state.locked || isExecuting) return;
+    
     evaluateBtn.style.transform = 'scale(0.98)';
-    evaluateBtn.style.backgroundColor = '#FB7185';
-    evaluateBtn.style.color = '#131313';
-    setTimeout(() => {
-      evaluateBtn.style.transform = 'scale(1)';
-      evaluateBtn.style.backgroundColor = '';
-      evaluateBtn.style.color = '';
-    }, 150);
+    if (evaluateProgress) {
+      evaluateProgress.style.transition = 'none';
+      evaluateProgress.style.width = '0%';
+    }
+    
+    let start = Date.now();
+    const duration = 2000;
+    
+    progressInterval = setInterval(() => {
+        let elapsed = Date.now() - start;
+        let percent = Math.min((elapsed / duration) * 100, 100);
+        if (evaluateProgress) evaluateProgress.style.width = `${percent}%`;
+    }, 16);
 
+    holdTimer = setTimeout(async () => {
+        clearInterval(progressInterval);
+        isExecuting = true;
+        if (evaluateProgress) evaluateProgress.style.width = '100%';
+        
+        evaluateBtn.style.backgroundColor = '#FB7185';
+        evaluateBtn.style.color = '#131313';
+        
+        document.body.classList.add('screen-shake');
+        setTimeout(() => document.body.classList.remove('screen-shake'), 300);
+        
+        setTimeout(() => {
+          evaluateBtn.style.transform = 'scale(1)';
+          evaluateBtn.style.backgroundColor = '';
+          evaluateBtn.style.color = '';
+        }, 300);
+
+        await executeEvaluation();
+        
+        isExecuting = false;
+        if (evaluateProgress) evaluateProgress.style.width = '0%';
+    }, duration);
+  }
+
+  async function executeEvaluation() {
     try {
       const result = await evaluateDate(state.selectedDate);
 
-      // Lấy chuỗi và giáp hiện tại
       let currentStreak = parseInt(localStorage.getItem('discipline_streak') || '0', 10);
       let shields = parseInt(localStorage.getItem('streak_shields') || '0', 10);
       const oldRank = getRankInfo(currentStreak).name;
@@ -593,13 +647,11 @@ export function renderDashboard(container) {
           trigger(pendingPromotionMessage, 'promotion');
         }
 
-        // Tặng Giáp: Cứ mỗi 10 ngày chuỗi nhận 1 Giáp
         if (currentStreak % 10 === 0) {
           shields++;
           trigger('🛡️ GIÁP BẢO VỆ ĐÃ ĐƯỢC CẤP! Ngươi có thêm một mạng sống.', 'info');
         }
       } else {
-        // KIỂM TRA GIÁP KHI THẤT BẠI
         if (shields > 0) {
           trigger(`CẢNH BÁO: Chuỗi ${currentStreak} ngày sắp nổ tung! Bạn có muốn dùng 🛡️ Giáp không?`, 'warning');
           const useShield = confirm('THẤT BẠI! Bạn có muốn tiêu tốn 1 🛡️ GIÁP để giữ chuỗi không?');
@@ -624,7 +676,6 @@ export function renderDashboard(container) {
         }
       }
 
-      // Lưu trữ và cập nhật UI
       localStorage.setItem('discipline_streak', currentStreak.toString());
       localStorage.setItem('streak_shields', shields.toString());
       updateConfig({ discipline_streak: currentStreak, streak_shields: shields }).catch(console.error);
@@ -640,7 +691,7 @@ export function renderDashboard(container) {
       evalStatus.textContent = `ERROR: ${err.message}`;
       evalStatus.style.color = '#FB7185';
     }
-  });
+  }
 
   syncCalendarViewToSelectedDate();
   renderCalendar();

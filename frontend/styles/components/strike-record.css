@@ -1,0 +1,29 @@
+.heat-grid {
+  display: grid;
+  grid-template-columns: repeat(10, 14px);
+  gap: 4px;
+}
+
+.heat-square,
+.mini-heat-square {
+  border-radius: 4px;
+  border: 1px solid #202939;
+}
+
+.table-wrap {
+  overflow: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  border: 1px solid var(--border);
+  padding: 8px;
+  text-align: left;
+  font-size: 13px;
+}
+

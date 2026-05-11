@@ -1,5 +1,5 @@
 import { state, getActiveConversation } from './state.js';
-import { api, fetchDashboardData, logDay, resetScore, setPersonalityMode, updateConfig } from './api.js';
+import { api, fetchDashboardData, logDay, resetScore, setPersonalityMode, updateConfig, fetchIntel } from './api.js';
 import { renderSidebar, bindSidebarNavigation } from '../components/sidebar.js';
 import { renderDashboard, updateScore } from '../components/dashboard.js';
 import { renderIntelFeed } from '../components/intelFeed.js';
@@ -29,7 +29,33 @@ function statusBadge(status) {
 function renderHistoryTable() {
   const body = document.getElementById('historyBody');
   if (!body) return;
-  body.innerHTML = state.history.map(item => `
+
+  const searchInput = document.getElementById('recordSearch');
+  const statusSelect = document.getElementById('recordStatusFilter');
+  const sortSelect = document.getElementById('recordSort');
+
+  const search = searchInput ? searchInput.value.toLowerCase() : '';
+  const status = statusSelect ? statusSelect.value : 'ALL';
+  const sortMode = sortSelect ? sortSelect.value : 'newest';
+
+  let filtered = state.history.filter(item => {
+    if (status !== 'ALL' && item.status !== status) return false;
+    if (search) {
+      const notes = (item.notes || '').toLowerCase();
+      if (!notes.includes(search)) return false;
+    }
+    return true;
+  });
+
+  filtered.sort((a, b) => {
+    if (sortMode === 'newest') return new Date(b.timestamp) - new Date(a.timestamp);
+    if (sortMode === 'oldest') return new Date(a.timestamp) - new Date(b.timestamp);
+    if (sortMode === 'delta_high') return b.delta - a.delta;
+    if (sortMode === 'delta_low') return a.delta - b.delta;
+    return 0;
+  });
+
+  body.innerHTML = filtered.map(item => `
     <tr>
       <td>${new Date(item.timestamp).toLocaleString()}</td>
       <td>${statusBadge(item.status)}</td>
@@ -90,10 +116,10 @@ function renderAnnualHeatmap(rangeData) {
   }
 }
 
-function renderTrendChart() {
+function renderTrendChart(intelData, mode = 'line') {
   const svg = document.getElementById('trendChart');
   if (!svg) return;
-  const data = state.trend || [];
+  const data = intelData.trend || [];
   svg.innerHTML = '';
   const w = 700, h = 220, pad = 24;
 
@@ -103,52 +129,97 @@ function renderTrendChart() {
   axis.setAttribute('fill', 'none');
   svg.appendChild(axis);
 
-  if (!data.length) return;
+  if (!data.length) {
+    const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    txt.setAttribute('x', w/2); txt.setAttribute('y', h/2);
+    txt.setAttribute('fill', '#475569'); txt.setAttribute('text-anchor', 'middle');
+    txt.textContent = 'NO DATA AVAILABLE';
+    svg.appendChild(txt);
+    return;
+  }
+  
   const min = Math.min(...data.map(d => d.score), 0);
   const max = Math.max(...data.map(d => d.score), 1);
   const span = Math.max(max - min, 1);
 
-  const points = data.map((d, i) => {
-    const x = pad + (i / Math.max(data.length - 1, 1)) * (w - pad * 2);
-    const y = h - pad - ((d.score - min) / span) * (h - pad * 2);
-    return `${x},${y}`;
-  }).join(' ');
+  if (mode === 'line') {
+    const points = data.map((d, i) => {
+      const x = pad + (i / Math.max(data.length - 1, 1)) * (w - pad * 2);
+      const y = h - pad - ((d.score - min) / span) * (h - pad * 2);
+      return `${x},${y}`;
+    }).join(' ');
 
-  const line = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
-  line.setAttribute('points', points);
-  line.setAttribute('stroke', '#60a5fa');
-  line.setAttribute('fill', 'none');
-  line.setAttribute('stroke-width', '2');
-  svg.appendChild(line);
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+    line.setAttribute('points', points);
+    line.setAttribute('stroke', '#60a5fa');
+    line.setAttribute('fill', 'none');
+    line.setAttribute('stroke-width', '2');
+    svg.appendChild(line);
+  } else {
+    // Bar chart
+    const barW = ((w - pad * 2) / data.length) * 0.8;
+    data.forEach((d, i) => {
+      const x = pad + (i / data.length) * (w - pad * 2) + barW * 0.1;
+      const y0 = h - pad - ((0 - min) / span) * (h - pad * 2);
+      const y = h - pad - ((d.score - min) / span) * (h - pad * 2);
+      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      rect.setAttribute('x', x);
+      rect.setAttribute('width', Math.max(barW, 2));
+      rect.setAttribute('y', Math.min(y, y0));
+      rect.setAttribute('height', Math.max(Math.abs(y0 - y), 2));
+      rect.setAttribute('fill', d.score > 0 ? '#34d399' : (d.score < 0 ? '#fb7185' : '#475569'));
+      svg.appendChild(rect);
+    });
+  }
 }
 
-function renderGauge() {
+function renderGauge(intelData) {
   const gauge = document.getElementById('ratioGauge');
   const ratioText = document.getElementById('ratioText');
   if (!gauge || !ratioText) return;
-  const total = state.success30 + state.failure30;
-  const ratio = total === 0 ? 0 : Math.round((state.success30 / total) * 100);
+  const ratio = intelData.ratio || 0;
   const radius = 62;
   const circ = 2 * Math.PI * radius;
   const dash = (ratio / 100) * circ;
+  
+  const color = ratio >= 70 ? '#34d399' : (ratio >= 40 ? '#facc15' : '#fb7185');
 
   gauge.innerHTML = `
     <circle cx="80" cy="80" r="${radius}" stroke="#263248" stroke-width="12" fill="none"></circle>
-    <circle cx="80" cy="80" r="${radius}" stroke="#34d399" stroke-width="12" fill="none"
-      stroke-dasharray="${dash} ${circ - dash}" transform="rotate(-90 80 80)"></circle>
-    <text x="80" y="86" text-anchor="middle" fill="#34d399" font-size="20">${ratio}%</text>
+    <circle cx="80" cy="80" r="${radius}" stroke="${color}" stroke-width="12" fill="none"
+      stroke-dasharray="${dash} ${circ - dash}" transform="rotate(-90 80 80)" style="transition: stroke-dasharray 1s ease-out;"></circle>
+    <text x="80" y="86" text-anchor="middle" fill="${color}" font-size="20" font-weight="bold">${ratio}%</text>
   `;
   ratioText.textContent = `${ratio}% SUCCESS`;
+  ratioText.style.color = color;
 }
 
-function renderIntel() {
+function renderIntel(intelData) {
   const intelList = document.getElementById('intelList');
   if (!intelList) return;
-  const notes = [];
-  if (state.score < 0) notes.push('ALERT: Score below zero.');
-  if (state.failure30 > state.success30) notes.push('WARNING: Failure ratio is high.');
-  if (state.success30 >= state.failure30) notes.push('NOTICE: Trend currently stable.');
-  intelList.innerHTML = notes.map(n => `<li>${n}</li>`).join('');
+  intelList.innerHTML = intelData.intel.map(n => `<li>${n}</li>`).join('');
+}
+
+async function refreshIntelView() {
+    const tfSelect = document.getElementById('intelTimeframe');
+    const modeSelect = document.getElementById('intelChartMode');
+    if (!tfSelect || !modeSelect) return;
+    
+    const timeframe = parseInt(tfSelect.value, 10) || 30;
+    const mode = modeSelect.value;
+    
+    const intelList = document.getElementById('intelList');
+    if (intelList) intelList.innerHTML = '<li style="color:#64748b;">Analysing data via DeepSeek...</li>';
+    
+    try {
+        const intelData = await fetchIntel(timeframe);
+        renderTrendChart(intelData, mode);
+        renderGauge(intelData);
+        renderIntel(intelData);
+    } catch (e) {
+        console.error("Failed to load intel:", e);
+        if (intelList) intelList.innerHTML = '<li style="color:#fb7185;">Error: Failed to connect to intel base.</li>';
+    }
 }
 
 async function refreshAll() {
@@ -170,9 +241,6 @@ async function refreshAll() {
   renderHistoryTable();
   renderHeatmap30(rangeData.slice(-30));
   renderAnnualHeatmap(rangeData);
-  renderTrendChart();
-  renderGauge();
-  renderIntel();
 
   const statTotalDays = document.getElementById('statTotalDays');
   const statWinRate = document.getElementById('statWinRate');
@@ -249,7 +317,15 @@ async function sendChatMessage() {
 }
 
 function bindEvents() {
-  bindSidebarNavigation(showSection);
+  bindSidebarNavigation((id) => {
+    showSection(id);
+    if (id === 'intel') {
+      refreshIntelView();
+    }
+  });
+
+  document.getElementById('intelTimeframe')?.addEventListener('change', refreshIntelView);
+  document.getElementById('intelChartMode')?.addEventListener('change', refreshIntelView);
 
   document.getElementById('openDrawerBtn')?.addEventListener('click', () => {
     document.getElementById('aiDrawer')?.classList.remove('hidden');
@@ -295,13 +371,23 @@ function bindEvents() {
   });
 
   document.getElementById('resetBtn')?.addEventListener('click', async () => {
-    if (!confirm('Confirm reset? This purges all history.')) return;
+    const isStrict = localStorage.getItem('sys_strict_confirm') !== 'false';
+    if (isStrict) {
+        const promptRes = prompt('STRICT MODE: Gõ "PURGE" để xác nhận xóa vĩnh viễn toàn bộ lịch sử.');
+        if (promptRes !== 'PURGE') {
+            alert('Đã hủy lệnh xóa.');
+            return;
+        }
+    } else {
+        if (!confirm('Bạn có chắc chắn muốn xóa toàn bộ lịch sử không?')) return;
+    }
     await resetScore();
 
     // VÁ LỖI: Dọn sạch gamification state trên trình duyệt và cả Backend
     localStorage.setItem('discipline_streak', '0');
     localStorage.setItem('streak_shields', '0');
     try { await updateConfig({ discipline_streak: 0, streak_shields: 0 }); } catch (err) { console.error('Failed to reset config on server:', err); }
+    
     const streakEl = document.getElementById('streakCount');
     if (streakEl) streakEl.textContent = '0';
 
@@ -312,18 +398,21 @@ function bindEvents() {
     }
 
     if (window.triggerAICoach) {
-      window.triggerAICoach('Hệ thống đã Reset. Ngươi lại trở về làm một Tân binh (IRON). Bắt đầu lại đi!', 'warning');
+      window.triggerAICoach('Hệ thống đã Reset. Ngươi lại trở về làm một Tân binh (IRON). Khởi động lại UI...', 'warning');
     }
-
-    await refreshAll();
+    
+    // Force a full reload to clear all active grids (Timeline, Heatmaps) from DOM
+    setTimeout(() => {
+        window.location.reload();
+    }, 1200);
   });
 
-  document.querySelectorAll('.mode-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      state.personalityMode = btn.dataset.mode;
-      await setPersonalityMode(state.personalityMode);
+  document.querySelectorAll('.persona-radio').forEach(radio => {
+    radio.addEventListener('change', async (e) => {
+      if (e.target.checked) {
+        state.personalityMode = e.target.value;
+        await setPersonalityMode(state.personalityMode);
+      }
     });
   });
 
@@ -348,6 +437,99 @@ function bindEvents() {
       e.preventDefault();
       sendChatMessage();
     }
+  });
+
+  window.addEventListener('dashboard:evaluated', async () => {
+    await refreshAll();
+  });
+
+  document.getElementById('recordSearch')?.addEventListener('input', renderHistoryTable);
+  document.getElementById('recordStatusFilter')?.addEventListener('change', renderHistoryTable);
+  document.getElementById('recordSort')?.addEventListener('change', renderHistoryTable);
+
+  document.getElementById('exportCsvBtn')?.addEventListener('click', () => {
+    if (!state.history || state.history.length === 0) {
+      alert('No data to export.');
+      return;
+    }
+    const headers = ['Timestamp', 'Status', 'Delta', 'Notes'];
+    const rows = state.history.map(item => [
+      new Date(item.timestamp).toISOString(),
+      item.status,
+      item.delta,
+      `"${(item.notes || '').replace(/"/g, '""')}"`
+    ]);
+    
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "strike_record_export.csv");
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  });
+
+  // SYSTEM CONFIG BINDINGS
+  document.getElementById('toggleSound')?.addEventListener('change', (e) => {
+      localStorage.setItem('sys_sound_override', e.target.checked);
+  });
+  document.getElementById('toggleAutoIntel')?.addEventListener('change', (e) => {
+      localStorage.setItem('sys_auto_intel', e.target.checked);
+  });
+  document.getElementById('toggleStrictConfirm')?.addEventListener('change', (e) => {
+      localStorage.setItem('sys_strict_confirm', e.target.checked);
+  });
+
+  document.getElementById('savePresetBtn')?.addEventListener('click', () => {
+      const backup = {
+          theme: localStorage.getItem('user_theme'),
+          sound: localStorage.getItem('sys_sound_override'),
+          autoIntel: localStorage.getItem('sys_auto_intel'),
+          strictConfirm: localStorage.getItem('sys_strict_confirm'),
+          persona: state.personalityMode
+      };
+      localStorage.setItem('sys_profile_1', JSON.stringify(backup));
+      if (window.triggerAICoach) window.triggerAICoach('Profile State Saved to Local Storage.', 'success');
+      else alert('Profile SAVED to Local Storage.');
+  });
+
+  document.getElementById('loadPresetBtn')?.addEventListener('click', async () => {
+      const backupStr = localStorage.getItem('sys_profile_1');
+      if (!backupStr) {
+          if (window.triggerAICoach) window.triggerAICoach('No saved profile found in Local Storage.', 'warning');
+          else alert('No profile found.');
+          return;
+      }
+      const backup = JSON.parse(backupStr);
+      
+      if (backup.theme) localStorage.setItem('user_theme', backup.theme);
+      if (backup.sound !== undefined) localStorage.setItem('sys_sound_override', backup.sound);
+      if (backup.autoIntel !== undefined) localStorage.setItem('sys_auto_intel', backup.autoIntel);
+      if (backup.strictConfirm !== undefined) localStorage.setItem('sys_strict_confirm', backup.strictConfirm);
+      if (backup.persona) {
+          state.personalityMode = backup.persona;
+          await setPersonalityMode(backup.persona);
+      }
+      
+      alert('Profile LOADED. Reloading interface...');
+      window.location.reload();
+  });
+
+  document.getElementById('deletePresetBtn')?.addEventListener('click', () => {
+      localStorage.removeItem('sys_profile_1');
+      if (window.triggerAICoach) window.triggerAICoach('Profile State DELETED.', 'warning');
+      else alert('Profile DELETED.');
+  });
+
+  document.getElementById('backupStateBtn')?.addEventListener('click', () => {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(localStorage));
+      const dlAnchorElem = document.createElement('a');
+      dlAnchorElem.setAttribute("href", dataStr);
+      dlAnchorElem.setAttribute("download", `fake_motivation_backup_${new Date().toISOString().split('T')[0]}.json`);
+      document.body.appendChild(dlAnchorElem);
+      dlAnchorElem.click();
+      dlAnchorElem.remove();
   });
 
   bindConversationButtons();
@@ -394,25 +576,57 @@ start().catch(err => {
 document.addEventListener('change', (e) => {
   if (e.target.id === 'themeSelect') {
     const selectedTheme = e.target.value;
-    if (selectedTheme === 'vercel') {
-      document.body.setAttribute('data-theme', 'vercel');
-      localStorage.setItem('user_theme', 'vercel');
-    } else {
-      document.body.removeAttribute('data-theme');
-      localStorage.setItem('user_theme', 'cyberpunk');
+    // Remove all theme attributes first
+    document.body.removeAttribute('data-theme');
+    if (selectedTheme !== 'cyberpunk') {
+      document.body.setAttribute('data-theme', selectedTheme);
     }
+    localStorage.setItem('user_theme', selectedTheme);
   }
 });
 
 window.addEventListener('DOMContentLoaded', () => {
   const savedTheme = localStorage.getItem('user_theme');
-  if (savedTheme === 'vercel') {
-    document.body.setAttribute('data-theme', 'vercel');
+  if (savedTheme && savedTheme !== 'cyberpunk') {
+    document.body.setAttribute('data-theme', savedTheme);
     setTimeout(() => {
       const select = document.getElementById('themeSelect');
-      if (select) select.value = 'vercel';
+      if (select) select.value = savedTheme;
     }, 500);
   }
+
+  // Auto Intel Feed Refresh — respect the sys_auto_intel toggle
+  const AUTO_INTEL_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+  let intelRefreshInterval = null;
+
+  function startIntelAutoRefresh() {
+    if (intelRefreshInterval) return; // already running
+    intelRefreshInterval = setInterval(() => {
+      const enabled = localStorage.getItem('sys_auto_intel') !== 'false';
+      if (!enabled) return;
+      // Only refresh if the Intel section is currently visible
+      const intelSection = document.getElementById('intel');
+      if (intelSection && !intelSection.classList.contains('hidden')) {
+        console.log('[AutoIntel] Auto-refreshing intel feed...');
+        refreshIntelView();
+      }
+    }, AUTO_INTEL_INTERVAL_MS);
+  }
+
+  document.getElementById('toggleAutoIntel')?.addEventListener('change', (e) => {
+    if (e.target.checked) {
+      startIntelAutoRefresh();
+    } else {
+      clearInterval(intelRefreshInterval);
+      intelRefreshInterval = null;
+    }
+  });
+
+  // Start on load if enabled
+  if (localStorage.getItem('sys_auto_intel') !== 'false') {
+    startIntelAutoRefresh();
+  }
+
 });
 
 // Global Bridge cho AI Coach

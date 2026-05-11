@@ -1,0 +1,119 @@
+/* =========================================
+   PSYCOFRAME GREEN — Military Terminal Theme
+   ========================================= */
+
+[data-theme="psycoframe"] {
+  --bg: #020c02;
+  --panel: #071105;
+  --panel-2: #0a1a08;
+  --text: #4ade80;
+  --muted: #166534;
+  --primary: #22c55e;
+  --success: #86efac;
+  --danger: #f87171;
+  --border: #14532d;
+
+  background: radial-gradient(circle at top, #051205, #020c02 60%) !important;
+  color: var(--text) !important;
+  font-family: 'Space Mono', monospace !important;
+}
+
+[data-theme="psycoframe"] body {
+  background: radial-gradient(circle at top, #051205, #020c02 60%);
+}
+
+/* Scanline overlay effect */
+[data-theme="psycoframe"]::after {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 255, 0, 0.015) 2px,
+    rgba(0, 255, 0, 0.015) 4px
+  );
+  pointer-events: none;
+  z-index: 9998;
+}
+
+/* Cards */
+[data-theme="psycoframe"] .card,
+[data-theme="psycoframe"] .brand-card,
+[data-theme="psycoframe"] .status-card,
+[data-theme="psycoframe"] .score-card,
+[data-theme="psycoframe"] .execution-matrix-container,
+[data-theme="psycoframe"] .pulse-stream-widget {
+  background: rgba(7, 17, 5, 0.9) !important;
+  border: 1px solid #14532d !important;
+  border-radius: 0 !important;
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.08) !important;
+}
+
+/* Sidebar */
+[data-theme="psycoframe"] .sidebar {
+  border-right: 1px solid #14532d !important;
+  background: #020c02 !important;
+}
+
+/* Buttons */
+[data-theme="psycoframe"] button {
+  background: #071105 !important;
+  color: #22c55e !important;
+  border: 1px solid #14532d !important;
+  border-radius: 0 !important;
+  font-family: 'Space Mono', monospace !important;
+  transition: all 0.15s ease !important;
+}
+
+[data-theme="psycoframe"] button:hover {
+  background: #0f2e0a !important;
+  border-color: #22c55e !important;
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.3) !important;
+}
+
+/* CTA Button */
+[data-theme="psycoframe"] #timelineEvaluateBtn {
+  background: #14532d !important;
+  color: #86efac !important;
+  border-color: #22c55e !important;
+  box-shadow: 0 0 15px rgba(34, 197, 94, 0.2) !important;
+}
+
+[data-theme="psycoframe"] #timelineEvaluateBtn:hover {
+  box-shadow: 0 0 25px rgba(34, 197, 94, 0.5) !important;
+}
+
+/* Score */
+[data-theme="psycoframe"] #scoreValue {
+  color: #22c55e !important;
+  text-shadow: 0 0 20px rgba(34, 197, 94, 0.5);
+}
+
+/* Text colors */
+[data-theme="psycoframe"] .card-title,
+[data-theme="psycoframe"] .matrix-status,
+[data-theme="psycoframe"] .panel-label {
+  color: #4ade80 !important;
+}
+
+/* Nav active */
+[data-theme="psycoframe"] .nav-list button.active {
+  border-color: #22c55e !important;
+  color: #22c55e !important;
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.3) !important;
+}
+
+/* Tables */
+[data-theme="psycoframe"] th, [data-theme="psycoframe"] td {
+  border-color: #14532d !important;
+  color: #4ade80 !important;
+}
+
+/* Input */
+[data-theme="psycoframe"] input, [data-theme="psycoframe"] textarea, [data-theme="psycoframe"] select {
+  background: #020c02 !important;
+  color: #4ade80 !important;
+  border-color: #14532d !important;
+}

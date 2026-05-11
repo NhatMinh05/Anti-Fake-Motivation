@@ -1,0 +1,178 @@
+/* =========================================
+   UX JUICE & GAMIFICATION
+   ========================================= */
+
+/* Gạch ngang mục tiêu đã hoàn thành */
+.card button[data-toggle-id] {
+  transition: all 0.3s ease;
+}
+
+.card button[data-toggle-id][style*="#10B981"] {
+  text-decoration: line-through;
+  opacity: 0.5;
+  color: #10B981 !important;
+}
+
+/* Hiệu ứng Glow cho các nút */
+#timelineAddTaskBtn:hover {
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
+  transform: translateY(-1px);
+}
+
+#timelineEvaluateBtn:hover {
+  box-shadow: 0 0 15px rgba(251, 113, 133, 0.4);
+}
+
+/* Rank chìm ở background */
+body::before {
+  content: attr(data-rank);
+  position: fixed;
+  bottom: -20px;
+  right: -20px;
+  font-size: 150px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.02);
+  z-index: -1;
+  pointer-events: none;
+  font-family: 'Geist', sans-serif;
+  letter-spacing: -5px;
+}
+
+body:not([data-rank])::before {
+  content: 'NOVICE';
+}
+
+[data-theme="vercel"] body::before {
+  color: rgba(0, 0, 0, 0.02);
+}
+   STRICT TIMELINE MATRIX & PULSE STREAM
+   ========================================= */
+
+.execution-matrix-container,
+.pulse-stream-widget {
+  padding: 12px;
+  background: #0b0c10;
+  border: 1px solid #2a2a2a;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  font-family: 'Geist Mono', monospace;
+}
+
+.matrix-header,
+.stream-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  font-size: 11px;
+  color: #9ca3af;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.matrix-status,
+.live-status {
+  color: #10b981;
+  font-weight: 600;
+}
+
+.time-grid,
+.legend-scale {
+  display: flex;
+  gap: 4px;
+}
+
+.grid-cell {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  background: #1a2030;
+  border: 1px solid #2a2a2a;
+}
+
+.grid-cell.empty {
+  background: #1a2030;
+}
+
+.grid-cell.active-low {
+  background: rgba(16, 185, 129, 0.3);
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+.grid-cell.active-mid {
+  background: rgba(16, 185, 129, 0.6);
+  border-color: rgba(16, 185, 129, 0.7);
+}
+
+.grid-cell.active-high {
+  background: rgba(16, 185, 129, 0.8);
+  border-color: rgba(16, 185, 129, 0.9);
+}
+
+.grid-cell.active-max {
+  background: rgba(16, 185, 129, 1);
+  border-color: #34d399;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+}
+
+.matrix-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  font-size: 10px;
+  color: #6b7280;
+}
+
+.stream-track {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+}
+
+.week-module {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.week-label {
+  font-size: 10px;
+  color: #6b7280;
+}
+
+.days-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pulse-pill {
+  width: 24px;
+  height: 8px;
+  border-radius: 4px;
+  background: #1a2030;
+}
+
+.pulse-pill.level-0 {
+  background: #1a2030;
+}
+
+.pulse-pill.level-1 {
+  background: rgba(56, 189, 248, 0.3);
+}
+
+.pulse-pill.level-2 {
+  background: rgba(56, 189, 248, 0.6);
+}
+
+.pulse-pill.level-3 {
+  background: rgba(56, 189, 248, 0.8);
+}
+
+.pulse-pill.level-max {
+  background: rgba(56, 189, 248, 1);
+  box-shadow: 0 0 6px rgba(56, 189, 248, 0.4);
+}
+
