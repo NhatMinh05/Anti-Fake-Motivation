@@ -15,6 +15,55 @@ import {
   bindConversationButtons
 } from '../components/aiDrawer.js';
 
+// ============================================================
+// TOAST NOTIFICATION SYSTEM
+// ============================================================
+const TOAST_ICONS = { success: '✅', error: '❌', warning: '⚠️', info: '📡' };
+function toast(message, type = 'info', duration = 3000) {
+  let container = document.getElementById('toast-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toast-container';
+    document.body.appendChild(container);
+  }
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.innerHTML = `<span class="toast-icon">${TOAST_ICONS[type] || '📡'}</span><span class="toast-msg">${message}</span>`;
+  container.appendChild(el);
+  setTimeout(() => el.remove(), duration + 300);
+}
+
+// ============================================================
+// OFFLINE BANNER
+// ============================================================
+function showOfflineBanner(msg = '⚠️ BACKEND OFFLINE — Attempting reconnection...') {
+  let banner = document.getElementById('offline-banner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'offline-banner';
+    document.body.prepend(banner);
+  }
+  banner.textContent = msg;
+  banner.classList.add('visible');
+}
+function hideOfflineBanner() {
+  document.getElementById('offline-banner')?.classList.remove('visible');
+}
+
+// ============================================================
+// DEBOUNCE UTILITY
+// ============================================================
+function debounce(fn, ms) {
+  let timer;
+  return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn(...args), ms); };
+}
+
+// ============================================================
+// INTEL CACHE
+// ============================================================
+const intelCache = { data: null, ts: 0, timeframe: null };
+const INTEL_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+
 function showSection(id) {
   ['mission', 'intel', 'record', 'config'].forEach(s => {
     document.getElementById(s)?.classList.toggle('hidden', s !== id);
@@ -92,27 +141,71 @@ function renderHeatmap30(rangeData) {
 
 function renderAnnualHeatmap(rangeData) {
   const root = document.getElementById('annualHeatmap');
-  if (!root) return;
+  const monthsRoot = document.getElementById('ghMonths');
+  if (!root || !monthsRoot) return;
+  
   const map = buildDayMap(rangeData);
   root.innerHTML = '';
-  for (let week = 0; week < 52; week++) {
-    const col = document.createElement('div');
-    col.style.display = 'grid';
-    col.style.gap = '3px';
-    for (let day = 0; day < 7; day++) {
-      const offset = (51 - week) * 7 + (6 - day);
-      const d = new Date();
-      d.setDate(d.getDate() - offset);
-      const key = d.toISOString().slice(0, 10);
-      const status = map.get(key);
-      const cell = document.createElement('div');
-      cell.className = 'mini-heat-square';
-      cell.style.width = '10px';
-      cell.style.height = '10px';
-      cell.style.background = status === 'SUCCESS' ? 'rgba(52,211,153,.95)' : status === 'FAILURE' ? 'rgba(251,113,133,.95)' : '#1a2030';
-      col.appendChild(cell);
+  monthsRoot.innerHTML = '';
+  
+  const today = new Date();
+  const todayDayOfWeek = today.getDay(); // 0 = Sun, 1 = Mon ... 6 = Sat
+  
+  // Total days to show: 52 full weeks (364 days) + days elapsed in current week
+  const totalDays = 52 * 7 + todayDayOfWeek + 1; 
+  let lastMonth = -1;
+  const colWidth = 13; // 10px width + 3px gap
+  
+  let col = null;
+  let colIndex = 0;
+
+  for (let i = totalDays - 1; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const dayOfWeek = d.getDay();
+    
+    // Create a new column if it's the very first day or if it's Sunday
+    if (dayOfWeek === 0 || !col) {
+      col = document.createElement('div');
+      col.style.display = 'grid';
+      col.style.gridTemplateRows = 'repeat(7, 10px)';
+      col.style.gap = '3px';
+      root.appendChild(col);
+      
+      // If it's the first column and doesn't start on Sunday, pad it with empty cells
+      if (i === totalDays - 1 && dayOfWeek !== 0) {
+         for(let pad=0; pad<dayOfWeek; pad++) {
+           const emptyCell = document.createElement('div');
+           emptyCell.style.width = '10px';
+           emptyCell.style.height = '10px';
+           col.appendChild(emptyCell);
+         }
+      }
+      
+      const m = d.getMonth();
+      // Only place month label if the month changed, and ensure labels don't overlap too much
+      // Wait, let's just place it if month changed.
+      if (m !== lastMonth) { 
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const mLabel = document.createElement('span');
+        mLabel.className = 'gh-month-label';
+        mLabel.textContent = monthNames[m];
+        mLabel.style.left = `${colIndex * colWidth}px`;
+        monthsRoot.appendChild(mLabel);
+        lastMonth = m;
+      }
+      colIndex++;
     }
-    root.appendChild(col);
+    
+    const key = d.toISOString().slice(0, 10);
+    const status = map.get(key);
+    const cell = document.createElement('div');
+    cell.className = 'mini-heat-square';
+    cell.style.width = '10px';
+    cell.style.height = '10px';
+    cell.style.background = status === 'SUCCESS' ? 'rgba(52,211,153,.95)' : status === 'FAILURE' ? 'rgba(251,113,133,.95)' : '#1a2030';
+    cell.title = `${key}: ${status ? status : 'No data'}`;
+    col.appendChild(cell);
   }
 }
 
@@ -204,49 +297,89 @@ async function refreshIntelView() {
     const tfSelect = document.getElementById('intelTimeframe');
     const modeSelect = document.getElementById('intelChartMode');
     if (!tfSelect || !modeSelect) return;
-    
+
     const timeframe = parseInt(tfSelect.value, 10) || 30;
     const mode = modeSelect.value;
-    
+    const now = Date.now();
+
+    // Serve from cache if fresh and same timeframe
+    if (intelCache.data && intelCache.timeframe === timeframe && (now - intelCache.ts) < INTEL_CACHE_TTL) {
+        renderTrendChart(intelCache.data, mode);
+        renderGauge(intelCache.data);
+        renderIntel(intelCache.data);
+        return;
+    }
+
     const intelList = document.getElementById('intelList');
     if (intelList) intelList.innerHTML = '<li style="color:#64748b;">Analysing data via DeepSeek...</li>';
-    
+
     try {
         const intelData = await fetchIntel(timeframe);
+        // Update cache
+        intelCache.data = intelData;
+        intelCache.ts = Date.now();
+        intelCache.timeframe = timeframe;
+
         renderTrendChart(intelData, mode);
         renderGauge(intelData);
         renderIntel(intelData);
     } catch (e) {
-        console.error("Failed to load intel:", e);
+        console.error('Failed to load intel:', e);
         if (intelList) intelList.innerHTML = '<li style="color:#fb7185;">Error: Failed to connect to intel base.</li>';
+        toast('Intel feed connection failed.', 'error');
     }
 }
 
-async function refreshAll() {
-  const { scoreData, historyData, rangeData, analytics, configData } = await fetchDashboardData();
-  state.score = scoreData.total_score;
-  state.history = historyData;
-  state.trend = analytics.trend_30d || [];
-  state.success30 = analytics.success_30d || 0;
-  state.failure30 = analytics.failure_30d || 0;
+async function _refreshAll() {
+  try {
+    const { scoreData, historyData, rangeData, analytics, configData } = await fetchDashboardData();
+    hideOfflineBanner();
 
-  if (configData.discipline_streak !== undefined) {
-    localStorage.setItem('discipline_streak', configData.discipline_streak);
+    state.score = scoreData.total_score;
+    state.history = historyData;
+    state.trend = analytics.trend_30d || [];
+    state.success30 = analytics.success_30d || 0;
+    state.failure30 = analytics.failure_30d || 0;
+
+    // #2 Single source of truth — backend is authoritative for streak/shields
+    if (configData.discipline_streak !== undefined) {
+      localStorage.setItem('discipline_streak', String(configData.discipline_streak));
+    }
+    if (configData.streak_shields !== undefined) {
+      localStorage.setItem('streak_shields', String(configData.streak_shields));
+    }
+
+    // #1 Sync Persona radio button from backend
+    if (configData.personality_mode) {
+      state.personalityMode = configData.personality_mode;
+      document.querySelectorAll('.persona-radio').forEach(r => {
+        r.checked = r.value === configData.personality_mode;
+      });
+    }
+
+    // Sync sidebar stats
+    const sideStreak = document.getElementById('sideStreak');
+    const sideShield = document.getElementById('sideShield');
+    if (sideStreak) sideStreak.textContent = localStorage.getItem('discipline_streak') || '0';
+    if (sideShield) sideShield.textContent = localStorage.getItem('streak_shields') || '0';
+
+    updateScore(state.score);
+    renderHistoryTable();
+    renderHeatmap30(rangeData.slice(-30));
+    renderAnnualHeatmap(rangeData);
+
+    const statTotalDays = document.getElementById('statTotalDays');
+    const statWinRate = document.getElementById('statWinRate');
+    if (statTotalDays) statTotalDays.textContent = analytics.total_days || 0;
+    if (statWinRate) statWinRate.textContent = (analytics.overall_rate || 0) + '%';
+  } catch (err) {
+    // #3 Error boundary — show offline banner instead of crashing
+    console.error('refreshAll error:', err);
+    showOfflineBanner();
   }
-  if (configData.streak_shields !== undefined) {
-    localStorage.setItem('streak_shields', configData.streak_shields);
-  }
-
-  updateScore(state.score);
-  renderHistoryTable();
-  renderHeatmap30(rangeData.slice(-30));
-  renderAnnualHeatmap(rangeData);
-
-  const statTotalDays = document.getElementById('statTotalDays');
-  const statWinRate = document.getElementById('statWinRate');
-  if (statTotalDays) statTotalDays.textContent = analytics.total_days || 0;
-  if (statWinRate) statWinRate.textContent = (analytics.overall_rate || 0) + '%';
 }
+// #6 Debounced wrapper — prevents hammering the API on rapid events
+const refreshAll = debounce(_refreshAll, 400);
 
 function setChatSendingState(sending) {
   state.isChatSending = sending;
@@ -337,14 +470,11 @@ function bindEvents() {
   document.getElementById('btnSuccess')?.addEventListener('click', async () => {
     const notes = prompt('Operational notes (optional):') || '';
     await logDay('SUCCESS', notes || null);
-    
+    // Read streak from localStorage (synced from backend on last refreshAll)
     let streak = parseInt(localStorage.getItem('discipline_streak') || '0', 10);
     let shields = parseInt(localStorage.getItem('streak_shields') || '0', 10);
     streak++;
-    if (streak % 10 === 0) shields++;
-    
-    localStorage.setItem('discipline_streak', streak.toString());
-    localStorage.setItem('streak_shields', shields.toString());
+    if (streak % 10 === 0) { shields++; toast(`🛡️ Shield earned! You now have ${shields} shields.`, 'success'); }
     await updateConfig({ discipline_streak: streak, streak_shields: shields });
     await refreshAll();
   });
@@ -352,19 +482,16 @@ function bindEvents() {
   document.getElementById('btnFailure')?.addEventListener('click', async () => {
     const notes = prompt('Operational notes (optional):') || '';
     await logDay('FAILURE', notes || null);
-    
     let shields = parseInt(localStorage.getItem('streak_shields') || '0', 10);
     if (shields > 0) {
       if (confirm('THẤT BẠI! Bạn có muốn dùng 1 🛡️ GIÁP để giữ chuỗi không?')) {
         shields--;
-        localStorage.setItem('streak_shields', shields.toString());
         await updateConfig({ streak_shields: shields });
+        toast('🛡️ Shield consumed. Streak preserved.', 'warning');
       } else {
-        localStorage.setItem('discipline_streak', '0');
         await updateConfig({ discipline_streak: 0 });
       }
     } else {
-      localStorage.setItem('discipline_streak', '0');
       await updateConfig({ discipline_streak: 0 });
     }
     await refreshAll();
@@ -481,55 +608,92 @@ function bindEvents() {
       localStorage.setItem('sys_strict_confirm', e.target.checked);
   });
 
+  // ---- #10 Multi-slot Profile helpers ----
+  function getProfiles() {
+    try { return JSON.parse(localStorage.getItem('sys_profiles') || '{}'); } catch { return {}; }
+  }
+  function saveProfiles(profiles) {
+    localStorage.setItem('sys_profiles', JSON.stringify(profiles));
+  }
+  function refreshProfileSelect() {
+    const sel = document.getElementById('profileSelect');
+    if (!sel) return;
+    const profiles = getProfiles();
+    sel.innerHTML = '<option value="">— Select profile —</option>' +
+      Object.keys(profiles).map(name => `<option value="${name}">${name}</option>`).join('');
+  }
+  refreshProfileSelect();
+
   document.getElementById('savePresetBtn')?.addEventListener('click', () => {
-      const backup = {
-          theme: localStorage.getItem('user_theme'),
-          sound: localStorage.getItem('sys_sound_override'),
-          autoIntel: localStorage.getItem('sys_auto_intel'),
-          strictConfirm: localStorage.getItem('sys_strict_confirm'),
-          persona: state.personalityMode
-      };
-      localStorage.setItem('sys_profile_1', JSON.stringify(backup));
-      if (window.triggerAICoach) window.triggerAICoach('Profile State Saved to Local Storage.', 'success');
-      else alert('Profile SAVED to Local Storage.');
+    const nameInput = document.getElementById('profileNameInput');
+    const name = nameInput?.value.trim() || `Profile ${new Date().toLocaleDateString()}`;
+    const profiles = getProfiles();
+    profiles[name] = {
+      theme: localStorage.getItem('user_theme'),
+      sound: localStorage.getItem('sys_sound_override'),
+      autoIntel: localStorage.getItem('sys_auto_intel'),
+      strictConfirm: localStorage.getItem('sys_strict_confirm'),
+      persona: state.personalityMode
+    };
+    saveProfiles(profiles);
+    refreshProfileSelect();
+    toast(`Profile "${name}" saved.`, 'success');
+    if (nameInput) nameInput.value = '';
   });
 
   document.getElementById('loadPresetBtn')?.addEventListener('click', async () => {
-      const backupStr = localStorage.getItem('sys_profile_1');
-      if (!backupStr) {
-          if (window.triggerAICoach) window.triggerAICoach('No saved profile found in Local Storage.', 'warning');
-          else alert('No profile found.');
-          return;
-      }
-      const backup = JSON.parse(backupStr);
-      
-      if (backup.theme) localStorage.setItem('user_theme', backup.theme);
-      if (backup.sound !== undefined) localStorage.setItem('sys_sound_override', backup.sound);
-      if (backup.autoIntel !== undefined) localStorage.setItem('sys_auto_intel', backup.autoIntel);
-      if (backup.strictConfirm !== undefined) localStorage.setItem('sys_strict_confirm', backup.strictConfirm);
-      if (backup.persona) {
-          state.personalityMode = backup.persona;
-          await setPersonalityMode(backup.persona);
-      }
-      
-      alert('Profile LOADED. Reloading interface...');
-      window.location.reload();
+    const sel = document.getElementById('profileSelect');
+    const name = sel?.value;
+    if (!name) { toast('Select a profile first.', 'warning'); return; }
+    const profiles = getProfiles();
+    const backup = profiles[name];
+    if (!backup) { toast('Profile not found.', 'error'); return; }
+    if (backup.theme) localStorage.setItem('user_theme', backup.theme);
+    if (backup.sound !== undefined) localStorage.setItem('sys_sound_override', backup.sound);
+    if (backup.autoIntel !== undefined) localStorage.setItem('sys_auto_intel', backup.autoIntel);
+    if (backup.strictConfirm !== undefined) localStorage.setItem('sys_strict_confirm', backup.strictConfirm);
+    if (backup.persona) { state.personalityMode = backup.persona; await setPersonalityMode(backup.persona); }
+    toast(`Profile "${name}" loaded. Reloading...`, 'info');
+    setTimeout(() => window.location.reload(), 1000);
   });
 
   document.getElementById('deletePresetBtn')?.addEventListener('click', () => {
-      localStorage.removeItem('sys_profile_1');
-      if (window.triggerAICoach) window.triggerAICoach('Profile State DELETED.', 'warning');
-      else alert('Profile DELETED.');
+    const sel = document.getElementById('profileSelect');
+    const name = sel?.value;
+    if (!name) { toast('Select a profile to delete.', 'warning'); return; }
+    const profiles = getProfiles();
+    delete profiles[name];
+    saveProfiles(profiles);
+    refreshProfileSelect();
+    toast(`Profile "${name}" deleted.`, 'warning');
   });
 
+  // ---- Backup / Import JSON (#9) ----
   document.getElementById('backupStateBtn')?.addEventListener('click', () => {
-      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(localStorage));
-      const dlAnchorElem = document.createElement('a');
-      dlAnchorElem.setAttribute("href", dataStr);
-      dlAnchorElem.setAttribute("download", `fake_motivation_backup_${new Date().toISOString().split('T')[0]}.json`);
-      document.body.appendChild(dlAnchorElem);
-      dlAnchorElem.click();
-      dlAnchorElem.remove();
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(localStorage));
+    const a = document.createElement('a');
+    a.href = dataStr;
+    a.download = `fake_motivation_backup_${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    toast('Local state backed up.', 'success');
+  });
+
+  document.getElementById('importStateBtn')?.addEventListener('click', () => {
+    document.getElementById('importFileInput')?.click();
+  });
+  document.getElementById('importFileInput')?.addEventListener('change', (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        Object.entries(data).forEach(([k, v]) => localStorage.setItem(k, v));
+        toast('State imported. Reloading...', 'success');
+        setTimeout(() => window.location.reload(), 1200);
+      } catch { toast('Invalid JSON file.', 'error'); }
+    };
+    reader.readAsText(file);
   });
 
   bindConversationButtons();
@@ -558,6 +722,34 @@ function mountLayout() {
   renderAIDrawer(document.getElementById('drawerMount'));
 }
 
+// #7 Skeleton loading — show shimmer while waiting for data
+function showSkeletons() {
+  const skTargets = ['statTotalDays', 'statWinRate', 'streakCount'];
+  skTargets.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.dataset.real = el.textContent; el.innerHTML = '<span class="skeleton skeleton-line short" style="display:inline-block;width:40px;height:14px;"></span>'; }
+  });
+}
+function hideSkeletons() {
+  const skTargets = ['statTotalDays', 'statWinRate', 'streakCount'];
+  skTargets.forEach(id => {
+    const el = document.getElementById(id);
+    if (el && el.querySelector('.skeleton')) el.innerHTML = el.dataset.real || '';
+  });
+}
+
+function startClock() {
+  const clockEl = document.getElementById('sysClock');
+  if (!clockEl) return;
+  setInterval(() => {
+    const d = new Date();
+    const h = String(d.getHours()).padStart(2, '0');
+    const m = String(d.getMinutes()).padStart(2, '0');
+    const s = String(d.getSeconds()).padStart(2, '0');
+    clockEl.textContent = `${h}:${m}:${s} SYS`;
+  }, 1000);
+}
+
 async function start() {
   mountLayout();
   loadConversations();
@@ -565,12 +757,15 @@ async function start() {
   renderActiveConversation();
   bindEvents();
   showSection('mission');
-  await refreshAll();
+  showSkeletons();
+  startClock();
+  await _refreshAll(); // call directly (not debounced) on first load
+  hideSkeletons();
 }
 
 start().catch(err => {
   console.error(err);
-  alert(`Startup error: ${err.message}`);
+  showOfflineBanner(`❌ Startup error: ${err.message}`);
 });
 
 document.addEventListener('change', (e) => {

@@ -1,4 +1,4 @@
-import { fetchTasks, addTask, toggleTask, deleteTask, evaluateDate, updateConfig } from '../js/api.js';
+import { fetchTasks, addTask, toggleTask, deleteTask, evaluateDate, updateConfig, braindumpTasks } from '../js/api.js';
 
 const ROAST_MESSAGES = [
   "Thất bại. Lại doomscrolling điện thoại đến 2h sáng chứ gì?",
@@ -295,15 +295,29 @@ export function renderDashboard(container) {
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <input id="timelineTaskInput" type="text" placeholder=">_ ENTER_OBJECTIVE..."
             style="flex:1;min-width:220px;background:#0E0E0E;border:1px solid #2A2A2A;color:#E5E7EB;padding:10px 12px;border-radius:0;outline:none;" />
-          <button id="timelineAddTaskBtn" style="background:#0E0E0E;border:1px solid #10B981;color:#10B981;padding:10px 16px;border-radius:0;">
+          <button id="timelineAddTaskBtn" style="background:#0E0E0E;border:1px solid #10B981;color:#10B981;padding:10px 16px;border-radius:0;cursor:pointer;">
             [ ADD ]
           </button>
+          <button id="toggleBraindumpBtn" style="background:#0E0E0E;border:1px solid #38BDF8;color:#38BDF8;padding:10px 16px;border-radius:0;cursor:pointer;">
+            [ AI BRAINDUMP ]
+          </button>
+        </div>
+
+        <!-- AI Braindump Panel -->
+        <div id="braindumpPanel" class="braindump-panel" style="margin-top: 15px;">
+          <div style="font-size:12px; color:#38BDF8; margin-bottom:10px; font-weight:bold;">[ DEEPSEEK ARCHITECT MODE ]</div>
+          <textarea id="braindumpText" class="braindump-textarea" placeholder="Dump all your messy thoughts, sub-tasks, and goals here. The AI will parse them into a strict Tech-Tree..."></textarea>
+          <div style="display:flex; justify-content:flex-end;">
+            <button id="processBraindumpBtn" style="background:#38BDF8; border:none; color:#0E0E0E; font-weight:bold; padding:8px 16px; cursor:pointer; display:flex; align-items:center; gap:8px;">
+              <span>PROCESS ARCHITECTURE</span>
+            </button>
+          </div>
         </div>
       </div>
 
       <div class="card" style="background:#131313;border:1px solid #2A2A2A;border-radius:0;">
-        <div style="font-size:12px;opacity:0.75;margin-bottom:8px;">TIMELINE GRID</div>
-        <div id="timelineTaskList" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(150px, 1fr));gap:12px;"></div>
+        <div style="font-size:12px;opacity:0.75;margin-bottom:8px;">TACTICAL MISSION TREE (HORIZONTAL)</div>
+        <div id="missionTreeContainer" class="mission-tree-container"></div>
       </div>
 
 
@@ -343,9 +357,14 @@ export function renderDashboard(container) {
   const nextBtn = root.querySelector('#timelineNextDate');
   const taskInput = root.querySelector('#timelineTaskInput');
   const addBtn = root.querySelector('#timelineAddTaskBtn');
-  const taskList = root.querySelector('#timelineTaskList');
   const evaluateBtn = root.querySelector('#timelineEvaluateBtn');
   const evalStatus = root.querySelector('#dashboardEvalStatus');
+  const treeContainer = root.querySelector('#missionTreeContainer');
+  
+  const toggleBraindumpBtn = root.querySelector('#toggleBraindumpBtn');
+  const braindumpPanel = root.querySelector('#braindumpPanel');
+  const braindumpText = root.querySelector('#braindumpText');
+  const processBraindumpBtn = root.querySelector('#processBraindumpBtn');
 
   const calendarPanel = root.querySelector('#timelineCalendarPanel');
   const calendarMonthLabel = root.querySelector('#calendarMonthLabel');
@@ -364,31 +383,66 @@ export function renderDashboard(container) {
     calendarViewMonth: new Date().getMonth()
   };
 
+  function buildTreeHTML(task, childrenMap) {
+    const children = childrenMap[task.id] || [];
+    const hasChildren = children.length > 0;
+    
+    const nodeClass = `tree-node ${task.is_completed ? 'completed' : ''} tree-node-box ${hasChildren ? 'has-children' : ''}`;
+    
+    const nodeHTML = `
+      <div class="${nodeClass}" data-task-id="${task.id}" data-parent-id="${task.parent_id || ''}" draggable="${!state.locked}" style="${state.locked ? 'cursor:not-allowed;' : 'cursor:grab;'}">
+        <div class="node-icon">${task.is_completed ? '☑' : '☐'}</div>
+        <div class="node-text">${escapeHtml(task.description)}</div>
+        <button class="node-delete" data-delete-id="${task.id}" ${state.locked ? 'disabled' : ''}>×</button>
+      </div>
+    `;
+
+    if (!hasChildren) {
+      return `<li class="tree-li">${nodeHTML}</li>`;
+    }
+
+    const childrenHTML = children.map(child => buildTreeHTML(child, childrenMap)).join('');
+    return `
+      <li class="tree-li">
+        ${nodeHTML}
+        <ul class="tree-ul sub-tree">
+          ${childrenHTML}
+        </ul>
+      </li>
+    `;
+  }
+
   function renderTasks() {
     if (state.tasks.length === 0) {
-      taskList.innerHTML = `<div style="padding:12px;border:1px solid #2A2A2A;background:#0E0E0E;color:#9CA3AF;grid-column:1/-1;text-align:center;">NO TASKS LOADED FOR THIS DATE</div>`;
+      treeContainer.innerHTML = `<div style="padding:12px;border:1px solid #2A2A2A;background:#0E0E0E;color:#9CA3AF;text-align:center;font-family:monospace;width:100%;">NO MISSIONS ASSIGNED FOR THIS DATE</div>`;
       return;
     }
 
-    taskList.innerHTML = state.tasks.map(task => `
-      <div style="position:relative;display:flex;flex-direction:column;justify-content:space-between;border:1px solid ${task.is_completed ? 'rgba(16,185,129,0.4)' : '#2A2A2A'};background:#0E0E0E;padding:14px;min-height:90px;border-radius:8px;transition:all 0.2s;${task.is_completed ? 'background:rgba(16,185,129,0.05);' : ''}">
-        <button data-toggle-id="${task.id}" ${state.locked ? 'disabled' : ''} style="flex:1;display:flex;flex-direction:column;align-items:flex-start;text-align:left;background:transparent;border:none;color:${task.is_completed ? '#10B981' : '#E5E7EB'};cursor:${state.locked ? 'not-allowed' : 'pointer'};font-family:inherit;padding:0;outline:none;">
-          <div style="font-size:14px;line-height:1.4;margin-right:16px;${task.is_completed ? 'text-decoration:line-through;opacity:0.7;' : ''}">
-             <span style="opacity:0.5;margin-right:4px;">${task.is_completed ? '☑' : '☐'}</span> 
-             ${escapeHtml(task.description)}
-          </div>
-          ${task.is_completed ? '<div style="margin-top:auto;padding-top:16px;color:#10B981;font-size:12px;font-weight:700;display:flex;align-items:center;gap:4px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> Completed</div>' : ''}
-        </button>
-        <button data-delete-id="${task.id}" ${state.locked ? 'disabled' : ''} style="position:absolute;top:4px;right:4px;background:transparent;border:none;color:#FB7185;padding:4px 8px;font-size:16px;cursor:${state.locked ? 'not-allowed' : 'pointer'};opacity:0.3;border-radius:4px;transition:opacity 0.2s;" onmouseover="this.style.opacity=1;this.style.background='rgba(251,113,133,0.1)';" onmouseout="this.style.opacity=0.3;this.style.background='transparent';">
-          ×
-        </button>
-      </div>
-    `).join('');
+    // Group by parent_id
+    const roots = state.tasks.filter(t => !t.parent_id);
+    const childrenMap = {};
+    state.tasks.forEach(t => {
+      if (t.parent_id) {
+        if (!childrenMap[t.parent_id]) childrenMap[t.parent_id] = [];
+        childrenMap[t.parent_id].push(t);
+      }
+    });
 
-    taskList.querySelectorAll('[data-toggle-id]').forEach(btn => {
-      btn.addEventListener('click', async () => {
+    let html = `<ul class="tree-ul root-tree">`;
+    roots.forEach(rootTask => {
+      html += buildTreeHTML(rootTask, childrenMap);
+    });
+    html += `</ul>`;
+
+    treeContainer.innerHTML = html;
+
+    // Bind Toggle & Delete events
+    treeContainer.querySelectorAll('.tree-node').forEach(node => {
+      node.addEventListener('click', async (e) => {
+        if (e.target.closest('.node-delete')) return;
         if (state.locked) return;
-        const id = Number(btn.getAttribute('data-toggle-id'));
+        
+        const id = Number(node.getAttribute('data-task-id'));
         try {
           await toggleTask(id);
           await loadTasks();
@@ -399,8 +453,9 @@ export function renderDashboard(container) {
       });
     });
 
-    taskList.querySelectorAll('[data-delete-id]').forEach(btn => {
-      btn.addEventListener('click', async () => {
+    treeContainer.querySelectorAll('.node-delete').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
         if (state.locked) return;
         const id = Number(btn.getAttribute('data-delete-id'));
         try {
@@ -411,6 +466,113 @@ export function renderDashboard(container) {
           evalStatus.style.color = '#FB7185';
         }
       });
+    });
+    
+    // Bind Drag and Drop Events
+    if (state.locked) return;
+
+    let draggedId = null;
+
+    treeContainer.querySelectorAll('.tree-node').forEach(node => {
+      node.addEventListener('dragstart', (e) => {
+        draggedId = Number(node.getAttribute('data-task-id'));
+        e.dataTransfer.effectAllowed = 'move';
+        setTimeout(() => node.style.opacity = '0.4', 0);
+      });
+      node.addEventListener('dragend', () => {
+        node.style.opacity = '1';
+        draggedId = null;
+        treeContainer.querySelectorAll('.drop-intent-child, .drop-intent-sibling').forEach(el => {
+          el.classList.remove('drop-intent-child', 'drop-intent-sibling');
+        });
+        treeContainer.classList.remove('drag-over-empty');
+      });
+    });
+
+    // Handle dropping on nodes
+    treeContainer.querySelectorAll('.tree-node').forEach(dropZone => {
+      dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        e.dataTransfer.dropEffect = 'move';
+        
+        const rect = dropZone.getBoundingClientRect();
+        // If mouse is in the right half of the node, intent is child
+        if (e.clientX > rect.right - (rect.width / 2)) {
+          dropZone.classList.add('drop-intent-child');
+          dropZone.classList.remove('drop-intent-sibling');
+        } else {
+          dropZone.classList.add('drop-intent-sibling');
+          dropZone.classList.remove('drop-intent-child');
+        }
+      });
+      
+      dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('drop-intent-child', 'drop-intent-sibling');
+      });
+
+      dropZone.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const isChildIntent = dropZone.classList.contains('drop-intent-child');
+        dropZone.classList.remove('drop-intent-child', 'drop-intent-sibling');
+        
+        if (!draggedId) return;
+
+        const targetNodeId = Number(dropZone.getAttribute('data-task-id'));
+        if (targetNodeId === draggedId) return;
+
+        // If intent is child, parent_id = targetNodeId
+        // If intent is sibling, parent_id = targetNode's parent_id (null if root)
+        let parentId = null;
+        if (isChildIntent) {
+           parentId = targetNodeId;
+        } else {
+           const pIdStr = dropZone.getAttribute('data-parent-id');
+           parentId = pIdStr ? Number(pIdStr) : null;
+        }
+
+        try {
+          const { moveTask } = await import('../js/api.js');
+          await moveTask(draggedId, parentId);
+          await loadTasks();
+        } catch (err) {
+          evalStatus.textContent = `MOVE ERROR: ${err.message}`;
+          evalStatus.style.color = '#FB7185';
+        }
+      });
+    });
+
+    // Handle dropping into empty space (make root)
+    treeContainer.addEventListener('dragover', (e) => {
+      // Only allow if not over a node
+      if (!e.target.closest('.tree-node')) {
+        e.preventDefault();
+        treeContainer.classList.add('drag-over-empty');
+      }
+    });
+
+    treeContainer.addEventListener('dragleave', () => {
+      treeContainer.classList.remove('drag-over-empty');
+    });
+
+    treeContainer.addEventListener('drop', async (e) => {
+      e.preventDefault();
+      treeContainer.classList.remove('drag-over-empty');
+      
+      if (!draggedId) return;
+      if (e.target.closest('.tree-node')) return; // handled by node drop
+
+      // Dropped in empty space -> make root
+      try {
+        const { moveTask } = await import('../js/api.js');
+        await moveTask(draggedId, null);
+        await loadTasks();
+      } catch (err) {
+        evalStatus.textContent = `MOVE ERROR: ${err.message}`;
+        evalStatus.style.color = '#FB7185';
+      }
     });
   }
 
@@ -495,6 +657,32 @@ export function renderDashboard(container) {
       evalStatus.style.color = '#FB7185';
     }
   }
+
+  // Braindump Logic
+  toggleBraindumpBtn.addEventListener('click', () => {
+    braindumpPanel.classList.toggle('active');
+  });
+
+  processBraindumpBtn.addEventListener('click', async () => {
+    const text = braindumpText.value.trim();
+    if (!text || state.locked) return;
+    
+    processBraindumpBtn.innerHTML = '<span class="ai-pulse-text">AI IS ARCHITECTING...</span>';
+    processBraindumpBtn.disabled = true;
+    
+    try {
+      await braindumpTasks(state.selectedDate, text);
+      braindumpText.value = '';
+      braindumpPanel.classList.remove('active');
+      await loadTasks();
+    } catch (err) {
+      evalStatus.textContent = `BRAINDUMP ERROR: ${err.message}`;
+      evalStatus.style.color = '#FB7185';
+    } finally {
+      processBraindumpBtn.innerHTML = '<span>PROCESS ARCHITECTURE</span>';
+      processBraindumpBtn.disabled = false;
+    }
+  });
 
   prevBtn.addEventListener('click', async () => {
     state.selectedDate = addDays(state.selectedDate, -1);

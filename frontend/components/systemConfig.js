@@ -66,18 +66,24 @@ export function renderSystemConfig(container) {
                   <div class="custom-select-wrapper">
                       <select id="themeSelect" class="cyber-select">
                           <option value="cyberpunk" ${currentTheme === 'cyberpunk' ? 'selected' : ''}>Terminal Dark (Default)</option>
-                          <option value="psycoframe">Psycoframe Green</option>
-                          <option value="bloodiron">Blood Iron Red</option>
+                          <option value="psycoframe" ${currentTheme === 'psycoframe' ? 'selected' : ''}>Psycoframe Green</option>
+                          <option value="bloodiron" ${currentTheme === 'bloodiron' ? 'selected' : ''}>Blood Iron Red</option>
                       </select>
                   </div>
               </div>
               <div class="col-item">
                   <div class="panel-label">[ STATE PROFILES ]</div>
+                  <div style="display:flex; gap:8px; margin-bottom:10px; align-items:center;">
+                      <input id="profileNameInput" class="cyber-select" style="flex:1; padding:6px 10px; font-size:11px;" placeholder="Profile name..." type="text">
+                  </div>
                   <div class="action-buttons">
                       <button id="savePresetBtn" class="cyber-btn default">SAVE</button>
                       <button id="loadPresetBtn" class="cyber-btn ghost">LOAD</button>
                       <button id="deletePresetBtn" class="cyber-btn delete">DEL</button>
                   </div>
+                  <select id="profileSelect" class="cyber-select" style="margin-top:10px; font-size:11px;">
+                      <option value="">— Select profile —</option>
+                  </select>
               </div>
           </div>
 
@@ -86,10 +92,13 @@ export function renderSystemConfig(container) {
               <p class="warning-text">WARNING: Resetting will permanently purge all execution score history. This action violates core discipline directives if done without cause.</p>
               <div class="danger-actions">
                   <button id="backupStateBtn" class="cyber-btn ghost-red">BACKUP LOCAL STATE</button>
+                  <button id="importStateBtn" class="cyber-btn ghost-red">IMPORT JSON</button>
                   <button id="resetBtn" class="cyber-btn destructive">PURGE CORE SCORE</button>
               </div>
+              <input id="importFileInput" type="file" accept=".json" style="display:none;">
           </div>
       </div>
     </section>
   `;
 }
+

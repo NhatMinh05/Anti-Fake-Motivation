@@ -50,6 +50,7 @@ class TimelineTask(Base):
     description = Column(Text)
     is_completed = Column(Boolean, default=False)
     is_locked = Column(Boolean, default=False)
+    parent_id = Column(Integer, nullable=True)
 
 
 Base.metadata.create_all(bind=engine)
@@ -104,10 +105,18 @@ class LogDayRequest(BaseModel):
 class TimelineTaskCreateRequest(BaseModel):
     date: str
     description: str
+    parent_id: Optional[int] = None
+
+class BraindumpRequest(BaseModel):
+    date: str
+    text: str
 
 
 class EvaluateDateRequest(BaseModel):
     date: str
+
+class MoveTaskRequest(BaseModel):
+    parent_id: Optional[int] = None
 
 
 class ChatMessage(BaseModel):
@@ -179,6 +188,7 @@ def get_tasks(date: str, db: Session = Depends(get_db)):
             "description": t.description,
             "is_completed": t.is_completed,
             "is_locked": t.is_locked,
+            "parent_id": t.parent_id,
         }
         for t in tasks
     ]
@@ -197,6 +207,7 @@ def create_task(req: TimelineTaskCreateRequest, db: Session = Depends(get_db)):
         description=req.description.strip(),
         is_completed=False,
         is_locked=False,
+        parent_id=req.parent_id,
     )
     db.add(task)
     db.commit()
@@ -207,6 +218,7 @@ def create_task(req: TimelineTaskCreateRequest, db: Session = Depends(get_db)):
         "description": task.description,
         "is_completed": task.is_completed,
         "is_locked": task.is_locked,
+        "parent_id": task.parent_id,
     }
 
 
@@ -221,14 +233,41 @@ def toggle_task(task_id: int, db: Session = Depends(get_db)):
     task.is_completed = not task.is_completed
     db.commit()
     db.refresh(task)
+    
+    # If a parent is completed, we could auto-complete children, but let's just return the task
     return {
         "id": task.id,
         "date": task.date,
         "description": task.description,
         "is_completed": task.is_completed,
         "is_locked": task.is_locked,
+        "parent_id": task.parent_id,
     }
 
+
+@app.put("/api/tasks/{task_id}/move")
+def move_task(task_id: int, req: MoveTaskRequest, db: Session = Depends(get_db)):
+    task = db.query(TimelineTask).filter(TimelineTask.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="task not found")
+    if task.is_locked:
+        raise HTTPException(status_code=409, detail="date already evaluated and locked")
+
+    # Prevent cyclic dependencies!
+    if req.parent_id is not None:
+        current_check = req.parent_id
+        while current_check is not None:
+            if current_check == task_id:
+                raise HTTPException(status_code=400, detail="Cannot move a task into its own descendant (cycle detected)")
+            parent = db.query(TimelineTask).filter(TimelineTask.id == current_check).first()
+            if not parent:
+                break
+            current_check = parent.parent_id
+
+    task.parent_id = req.parent_id
+    db.commit()
+    db.refresh(task)
+    return {"message": "task moved", "id": task_id, "parent_id": task.parent_id}
 
 @app.delete("/api/tasks/{task_id}")
 def delete_task(task_id: int, db: Session = Depends(get_db)):
@@ -238,6 +277,8 @@ def delete_task(task_id: int, db: Session = Depends(get_db)):
     if task.is_locked:
         raise HTTPException(status_code=409, detail="date already evaluated and locked")
 
+    # Delete children if it's a parent
+    db.query(TimelineTask).filter(TimelineTask.parent_id == task_id).delete()
     db.delete(task)
     db.commit()
     return {"message": "task deleted", "id": task_id}
@@ -516,6 +557,83 @@ def generate_intel(req: IntelRequest, db: Session = Depends(get_db)):
     }
 
 
+@app.post("/api/braindump")
+def braindump(req: BraindumpRequest, db: Session = Depends(get_db)):
+    validate_iso_date(req.date)
+    if is_date_locked(db, req.date):
+        raise HTTPException(status_code=409, detail="date already evaluated and locked")
+    
+    if not DEEPSEEK_API_KEY:
+        raise HTTPException(status_code=503, detail="DEEPSEEK_API_KEY not configured")
+
+    prompt = (
+        "You are an AI task architect. The user is overwhelmed and just brain-dumped a list of tasks or thoughts. "
+        "Your job is to structure this into a JSON array of parent tasks, each containing an optional array of subtasks. "
+        "Do NOT include markdown block formatting like ```json in the output. Just return the raw JSON array. "
+        "Each parent task object should have: \n"
+        " - \"description\": (string)\n"
+        " - \"subtasks\": (array of strings, optional)\n"
+        "Make the descriptions concise, actionable, and military-precise. "
+        f"User Input: {req.text}"
+    )
+
+    try:
+        import json
+        client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url=DEEPSEEK_BASE_URL, timeout=45)
+        response = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[{"role": "system", "content": prompt}],
+            max_tokens=800,
+            temperature=0.3,
+        )
+        
+        reply = response.choices[0].message.content.strip()
+        # Clean up possible markdown
+        if reply.startswith("```"):
+            reply = reply.split("\n", 1)[1]
+            if reply.endswith("```"):
+                reply = reply.rsplit("\n", 1)[0]
+        
+        parsed_data = json.loads(reply)
+        created_tasks = []
+        
+        for parent in parsed_data:
+            p_desc = parent.get("description")
+            if not p_desc:
+                continue
+            
+            p_task = TimelineTask(
+                date=req.date,
+                description=p_desc,
+                is_completed=False,
+                is_locked=False,
+                parent_id=None
+            )
+            db.add(p_task)
+            db.commit()
+            db.refresh(p_task)
+            created_tasks.append(p_task)
+            
+            subtasks = parent.get("subtasks", [])
+            for s_desc in subtasks:
+                if not s_desc:
+                    continue
+                s_task = TimelineTask(
+                    date=req.date,
+                    description=s_desc,
+                    is_completed=False,
+                    is_locked=False,
+                    parent_id=p_task.id
+                )
+                db.add(s_task)
+                
+        db.commit()
+        return {"message": "Braindump processed successfully", "parent_count": len(created_tasks)}
+
+    except Exception as e:
+        print(f"Braindump error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to process braindump with AI")
+
 @app.get("/api/config")
 def get_config(db: Session = Depends(get_db)):
     rows = db.query(AppConfig).all()
@@ -532,3 +650,4 @@ def set_config(payload: dict, db: Session = Depends(get_db)):
             db.add(AppConfig(key=key, value=str(value)))
     db.commit()
     return {"message": "Config updated"}
+

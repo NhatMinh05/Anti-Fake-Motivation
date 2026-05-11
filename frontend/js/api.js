@@ -41,16 +41,23 @@ export async function fetchTasks(date) {
   return api(`/tasks?date=${encodeURIComponent(date)}`);
 }
 
-export async function addTask(date, description) {
+export async function addTask(date, description, parent_id = null) {
   return api('/tasks', {
     method: 'POST',
-    body: JSON.stringify({ date, description })
+    body: JSON.stringify({ date, description, parent_id })
   });
 }
 
 export async function toggleTask(taskId) {
   return api(`/tasks/${taskId}/toggle`, {
     method: 'PUT'
+  });
+}
+
+export async function moveTask(taskId, parentId) {
+  return api(`/tasks/${taskId}/move`, {
+    method: 'PUT',
+    body: JSON.stringify({ parent_id: parentId })
   });
 }
 
@@ -64,6 +71,13 @@ export async function resetScore() {
   return api('/reset', {
     method: 'POST',
     body: JSON.stringify({ confirm: true })
+  });
+}
+
+export async function braindumpTasks(date, text) {
+  return api('/braindump', {
+    method: 'POST',
+    body: JSON.stringify({ date, text })
   });
 }
 
