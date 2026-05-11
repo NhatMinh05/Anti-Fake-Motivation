@@ -1,15 +1,37 @@
 const API_BASE = 'http://127.0.0.1:8000/api';
 
+function getToken() {
+  return localStorage.getItem('access_token');
+}
+
 export async function api(path, options = {}) {
+  const token = getToken();
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
   const res = await fetch(`${API_BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     ...options
   });
+  if (res.status === 401) {
+    // Token expired or invalid, force re-login
+    localStorage.removeItem('access_token');
+    window.location.href = 'login.html';
+    return;
+  }
   if (!res.ok) {
     const error = await res.json().catch(() => ({ detail: 'Request failed' }));
     throw new Error(error.detail || 'Request failed');
   }
   return res.json();
+}
+
+export async function getMe() {
+  return api('/auth/me');
+}
+
+export function logout() {
+  localStorage.removeItem('access_token');
+  window.location.href = 'login.html';
 }
 
 export async function fetchDashboardData() {

@@ -1,5 +1,5 @@
 import { state, getActiveConversation } from './state.js';
-import { api, fetchDashboardData, logDay, resetScore, setPersonalityMode, updateConfig, fetchIntel } from './api.js';
+import { api, fetchDashboardData, logDay, resetScore, setPersonalityMode, updateConfig, fetchIntel, getMe, logout } from './api.js';
 import { renderSidebar, bindSidebarNavigation } from '../components/sidebar.js';
 import { renderDashboard, updateScore } from '../components/dashboard.js';
 import { renderIntelFeed } from '../components/intelFeed.js';
@@ -216,6 +216,27 @@ function renderTrendChart(intelData, mode = 'line') {
   svg.innerHTML = '';
   const w = 700, h = 220, pad = 24;
 
+  // Setup Definitions for Gradients
+  const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+  defs.innerHTML = `
+    <linearGradient id="lineGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#38BDF8" stop-opacity="0.5" />
+      <stop offset="100%" stop-color="#38BDF8" stop-opacity="0.0" />
+    </linearGradient>
+    <linearGradient id="barGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#34d399" stop-opacity="0.8" />
+      <stop offset="100%" stop-color="#34d399" stop-opacity="0.2" />
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  `;
+  svg.appendChild(defs);
+
   const axis = document.createElementNS('http://www.w3.org/2000/svg', 'path');
   axis.setAttribute('d', `M ${pad} ${h - pad} L ${w - pad} ${h - pad} M ${pad} ${pad} L ${pad} ${h - pad}`);
   axis.setAttribute('stroke', '#2c3b53');
@@ -236,18 +257,47 @@ function renderTrendChart(intelData, mode = 'line') {
   const span = Math.max(max - min, 1);
 
   if (mode === 'line') {
-    const points = data.map((d, i) => {
+    const coords = data.map((d, i) => {
       const x = pad + (i / Math.max(data.length - 1, 1)) * (w - pad * 2);
       const y = h - pad - ((d.score - min) / span) * (h - pad * 2);
-      return `${x},${y}`;
-    }).join(' ');
+      return { x, y, score: d.score };
+    });
+    
+    const points = coords.map(c => `${c.x},${c.y}`).join(' ');
+    
+    // Gradient Polygon underneath
+    if (coords.length > 1) {
+      const first = coords[0];
+      const last = coords[coords.length - 1];
+      const polyPoints = `${first.x},${h - pad} ${points} ${last.x},${h - pad}`;
+      
+      const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+      polygon.setAttribute('points', polyPoints);
+      polygon.setAttribute('fill', 'url(#lineGrad)');
+      svg.appendChild(polygon);
+    }
 
+    // Main line
     const line = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
     line.setAttribute('points', points);
-    line.setAttribute('stroke', '#60a5fa');
+    line.setAttribute('stroke', '#38BDF8');
     line.setAttribute('fill', 'none');
     line.setAttribute('stroke-width', '2');
+    line.setAttribute('filter', 'url(#glow)');
     svg.appendChild(line);
+    
+    // Points
+    coords.forEach(c => {
+      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      circle.setAttribute('cx', c.x);
+      circle.setAttribute('cy', c.y);
+      circle.setAttribute('r', '3');
+      circle.setAttribute('fill', '#131313');
+      circle.setAttribute('stroke', c.score > 0 ? '#34d399' : (c.score < 0 ? '#fb7185' : '#38BDF8'));
+      circle.setAttribute('stroke-width', '2');
+      circle.setAttribute('class', 'chart-point');
+      svg.appendChild(circle);
+    });
   } else {
     // Bar chart
     const barW = ((w - pad * 2) / data.length) * 0.8;
@@ -255,12 +305,23 @@ function renderTrendChart(intelData, mode = 'line') {
       const x = pad + (i / data.length) * (w - pad * 2) + barW * 0.1;
       const y0 = h - pad - ((0 - min) / span) * (h - pad * 2);
       const y = h - pad - ((d.score - min) / span) * (h - pad * 2);
+      
       const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
       rect.setAttribute('x', x);
       rect.setAttribute('width', Math.max(barW, 2));
       rect.setAttribute('y', Math.min(y, y0));
       rect.setAttribute('height', Math.max(Math.abs(y0 - y), 2));
-      rect.setAttribute('fill', d.score > 0 ? '#34d399' : (d.score < 0 ? '#fb7185' : '#475569'));
+      rect.setAttribute('rx', '2'); // Rounded corners
+      
+      let fillType = d.score > 0 ? 'url(#barGrad)' : (d.score < 0 ? '#fb7185' : '#1e293b');
+      if (d.score > 0) {
+        rect.setAttribute('fill', 'url(#barGrad)');
+      } else if (d.score < 0) {
+        rect.setAttribute('fill', '#e11d48');
+      } else {
+        rect.setAttribute('fill', '#1e293b');
+      }
+      
       svg.appendChild(rect);
     });
   }
@@ -276,15 +337,31 @@ function renderGauge(intelData) {
   const dash = (ratio / 100) * circ;
   
   const color = ratio >= 70 ? '#34d399' : (ratio >= 40 ? '#facc15' : '#fb7185');
+  const glowColor = ratio >= 70 ? '#10b981' : (ratio >= 40 ? '#ca8a04' : '#e11d48');
 
   gauge.innerHTML = `
-    <circle cx="80" cy="80" r="${radius}" stroke="#263248" stroke-width="12" fill="none"></circle>
-    <circle cx="80" cy="80" r="${radius}" stroke="${color}" stroke-width="12" fill="none"
-      stroke-dasharray="${dash} ${circ - dash}" transform="rotate(-90 80 80)" style="transition: stroke-dasharray 1s ease-out;"></circle>
+    <defs>
+      <linearGradient id="gaugeGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="${glowColor}" />
+        <stop offset="100%" stop-color="${color}" />
+      </linearGradient>
+      <filter id="gaugeGlow">
+        <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+        <feMerge>
+          <feMergeNode in="coloredBlur"/>
+          <feMergeNode in="SourceGraphic"/>
+        </feMerge>
+      </filter>
+    </defs>
+    <circle cx="80" cy="80" r="${radius}" stroke="#1e293b" stroke-width="12" fill="none"></circle>
+    <circle cx="80" cy="80" r="${radius}" stroke="url(#gaugeGrad)" stroke-width="12" fill="none"
+      stroke-dasharray="${dash} ${circ - dash}" transform="rotate(-90 80 80)" 
+      style="transition: stroke-dasharray 1s ease-out;" stroke-linecap="round" filter="url(#gaugeGlow)"></circle>
     <text x="80" y="86" text-anchor="middle" fill="${color}" font-size="20" font-weight="bold">${ratio}%</text>
   `;
   ratioText.textContent = `${ratio}% SUCCESS`;
   ratioText.style.color = color;
+  ratioText.style.textShadow = `0 0 10px ${color}40`;
 }
 
 function renderIntel(intelData) {
@@ -476,6 +553,7 @@ function bindEvents() {
     streak++;
     if (streak % 10 === 0) { shields++; toast(`🛡️ Shield earned! You now have ${shields} shields.`, 'success'); }
     await updateConfig({ discipline_streak: streak, streak_shields: shields });
+    intelCache.ts = 0; // Force Intel Feed to update real-time
     await refreshAll();
   });
 
@@ -494,6 +572,7 @@ function bindEvents() {
     } else {
       await updateConfig({ discipline_streak: 0 });
     }
+    intelCache.ts = 0; // Force Intel Feed to update real-time
     await refreshAll();
   });
 
@@ -514,6 +593,8 @@ function bindEvents() {
     localStorage.setItem('discipline_streak', '0');
     localStorage.setItem('streak_shields', '0');
     try { await updateConfig({ discipline_streak: 0, streak_shields: 0 }); } catch (err) { console.error('Failed to reset config on server:', err); }
+    
+    intelCache.ts = 0; // Force Intel Feed to update real-time
     
     const streakEl = document.getElementById('streakCount');
     if (streakEl) streakEl.textContent = '0';
@@ -821,6 +902,44 @@ window.addEventListener('DOMContentLoaded', () => {
   if (localStorage.getItem('sys_auto_intel') !== 'false') {
     startIntelAutoRefresh();
   }
+
+  // Operative Menu Toggle
+  const opTrigger = document.getElementById('opTrigger');
+  const opMenu = document.getElementById('opMenu');
+  
+  opTrigger?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    opMenu?.classList.toggle('hidden');
+    const chevron = opTrigger.querySelector('.op-chevron');
+    if (chevron) {
+      chevron.style.transform = opMenu?.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)';
+    }
+  });
+
+  // Close menu when clicking outside
+  document.addEventListener('click', () => {
+    if (!opMenu?.classList.contains('hidden')) {
+      opMenu?.classList.add('hidden');
+      const chevron = opTrigger?.querySelector('.op-chevron');
+      if (chevron) chevron.style.transform = 'rotate(0deg)';
+    }
+  });
+
+  // Logout button (now inside the menu)
+  document.getElementById('logoutBtn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (confirm('TERMINATE SESSION AND DISCONNECT?')) logout();
+  });
+
+  // Load username and set avatar initials
+  getMe().then(me => {
+    const nameEl = document.getElementById('sideUsername');
+    const avatarEl = document.getElementById('opAvatar');
+    if (me?.username) {
+      if (nameEl) nameEl.textContent = me.username.toUpperCase();
+      if (avatarEl) avatarEl.textContent = me.username.substring(0, 2).toUpperCase();
+    }
+  }).catch(() => {});
 
 });
 

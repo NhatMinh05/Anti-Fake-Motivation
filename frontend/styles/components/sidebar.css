@@ -461,3 +461,106 @@ body[data-rank="MASTER"] #streakBadge .streak-fire-icon {
 }
 
 /* =========================================
+   OPERATIVE FOOTER (Mini Circular Version)
+   ========================================= */
+
+.operative-footer {
+  position: absolute;
+  bottom: 25px;
+  left: 25px;
+  z-index: 1000;
+}
+
+.operative-trigger.mini {
+  width: 42px;
+  height: 42px;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1.5px solid rgba(56, 189, 248, 0.3);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+}
+
+.operative-trigger.mini:hover {
+  border-color: #38BDF8;
+  transform: scale(1.1) rotate(5deg);
+  box-shadow: 0 0 20px rgba(56, 189, 248, 0.3);
+}
+
+.op-avatar.circular {
+  width: 34px;
+  height: 34px;
+  background: #0B0F1A;
+  border-radius: 50%;
+  color: #38BDF8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Space Mono', monospace;
+  font-weight: bold;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+}
+
+/* Mini Menu Styling */
+.operative-menu.mini-menu {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  left: 0;
+  width: 200px;
+  background: #0B0F1A;
+  border: 1px solid #1E293B;
+  border-radius: 12px;
+  padding: 8px;
+  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.8);
+  z-index: 1001;
+  transform-origin: bottom left;
+  backdrop-filter: blur(10px);
+}
+
+.operative-menu.mini-menu .menu-header {
+  font-size: 10px;
+  font-weight: bold;
+  color: #64748B;
+  padding: 10px 12px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  margin-bottom: 6px;
+}
+
+.menu-item {
+  width: 100% !important;
+  background: rgba(251, 113, 133, 0.05) !important;
+  border: 1px solid rgba(251, 113, 133, 0.15) !important;
+  color: #FB7185 !important;
+  padding: 12px !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  font-family: 'Space Mono', monospace !important;
+  font-size: 10px !important;
+  font-weight: bold !important;
+  cursor: pointer !important;
+  transition: all 0.2s !important;
+  text-align: left !important;
+  text-transform: uppercase !important;
+  letter-spacing: 1px !important;
+}
+
+.menu-item:hover {
+  background: rgba(251, 113, 133, 0.15) !important;
+  border-color: #FB7185 !important;
+  color: #FFF !important;
+  box-shadow: 0 0 15px rgba(251, 113, 133, 0.3) !important;
+}
+
+.menu-icon {
+  font-size: 14px;
+}

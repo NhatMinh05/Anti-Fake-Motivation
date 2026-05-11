@@ -20,6 +20,19 @@ export function renderSidebar(container) {
       </div>
     </div>
     <button id="openDrawerBtn" class="primary-btn">OPEN AI CONSOLE</button>
+    <div class="operative-footer">
+      <div class="operative-trigger mini" id="opTrigger" title="System Access">
+        <div class="op-avatar circular" id="opAvatar">?</div>
+      </div>
+      
+      <div class="operative-menu mini-menu hidden" id="opMenu">
+        <div class="menu-header" id="sideUsername">OPERATIVE</div>
+        <button class="menu-item" id="logoutBtn">
+          <span class="menu-icon">⏻</span>
+          <span class="menu-text">TERMINATE SESSION</span>
+        </button>
+      </div>
+    </div>
   `;
 }
 

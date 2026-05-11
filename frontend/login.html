@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Discipline OS - System Login</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles/login.css">
+  <meta name="theme-color" content="#0E0E0E">
+  <link rel="manifest" href="manifest.json">
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js');
+      });
+    }
+  </script>
+</head>
+<body>
+  <div id="bootSequence" class="terminal">
+    <!-- Boot text will be generated via JS -->
+  </div>
+
+  <div id="loginFormContainer" class="login-wrapper hidden">
+    <div class="glitch-container">
+      <h1 class="glitch" data-text="DISCIPLINE OS">DISCIPLINE OS</h1>
+    </div>
+    <div class="login-box">
+      <div class="box-header">[ AUTHENTICATION REQUIRED ]</div>
+      <form id="loginForm">
+        <div class="input-group">
+          <label>OPERATIVE ID</label>
+          <input type="text" id="username" autocomplete="off" spellcheck="false" required placeholder="Enter ID...">
+        </div>
+        <div class="input-group">
+          <label>PASSCODE</label>
+          <input type="password" id="password" required placeholder="Enter Passcode...">
+        </div>
+        <button type="submit" class="cyber-btn" id="btnAuth">INITIALIZE UPLINK</button>
+      </form>
+      <div id="loginMsg" class="login-msg"></div>
+    </div>
+  </div>
+
+  <script src="js/login.js"></script>
+</body>
+</html>

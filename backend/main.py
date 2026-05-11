@@ -1,8 +1,9 @@
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text, Boolean
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text, Boolean, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from datetime import datetime, timedelta
@@ -11,12 +12,33 @@ import os
 from dotenv import load_dotenv
 from openai import OpenAI
 import openai
+from passlib.context import CryptContext
+import hashlib, secrets
+from jose import JWTError, jwt
 
 load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./discipline.db")
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
 DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+SECRET_KEY = os.getenv("SECRET_KEY", "discipline-os-ultra-secret-key-change-me")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_DAYS = 30
+
+# Use built-in hashlib for Python 3.13 compatibility
+def hash_password(password: str) -> str:
+    salt = secrets.token_hex(16)
+    hashed = hashlib.sha256((salt + password).encode()).hexdigest()
+    return f"{salt}${hashed}"
+
+def verify_password(password: str, stored: str) -> bool:
+    try:
+        salt, hashed = stored.split('$', 1)
+        return hashlib.sha256((salt + password).encode()).hexdigest() == hashed
+    except Exception:
+        return False
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 engine = create_engine(
     DATABASE_URL,
@@ -34,6 +56,7 @@ class ScoreRecord(Base):
     delta = Column(Integer)      # +1 or -2
     notes = Column(Text, nullable=True)
     cumulative_score = Column(Integer)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
 
 
 class AppConfig(Base):
@@ -41,6 +64,7 @@ class AppConfig(Base):
     id = Column(Integer, primary_key=True, index=True)
     key = Column(String(64), unique=True)
     value = Column(Text)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
 
 
 class TimelineTask(Base):
@@ -51,6 +75,15 @@ class TimelineTask(Base):
     is_completed = Column(Boolean, default=False)
     is_locked = Column(Boolean, default=False)
     parent_id = Column(Integer, nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+
+
+class User(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(64), unique=True, index=True)
+    hashed_password = Column(String(256))
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 
 Base.metadata.create_all(bind=engine)
@@ -64,18 +97,39 @@ def get_db():
         db.close()
 
 
-def get_total_score(db: Session) -> int:
-    last = db.query(ScoreRecord).order_by(ScoreRecord.id.desc()).first()
+def create_access_token(data: dict):
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS)
+    to_encode.update({"exp": int(expire.timestamp())})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise HTTPException(status_code=401, detail="Invalid token")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    user = db.query(User).filter(User.username == username).first()
+    if user is None:
+        raise HTTPException(status_code=401, detail="User not found")
+    return user
+
+
+def get_total_score(db: Session, user_id: int) -> int:
+    last = db.query(ScoreRecord).filter(ScoreRecord.user_id == user_id).order_by(ScoreRecord.id.desc()).first()
     return last.cumulative_score if last else 0
 
 
-def is_date_locked(db: Session, date: str) -> bool:
-    return db.query(TimelineTask).filter(TimelineTask.date == date, TimelineTask.is_locked == True).first() is not None
+def is_date_locked(db: Session, date: str, user_id: int) -> bool:
+    return db.query(TimelineTask).filter(TimelineTask.date == date, TimelineTask.is_locked == True, TimelineTask.user_id == user_id).first() is not None
 
 
-def is_date_already_evaluated(db: Session, date: str) -> bool:
+def is_date_already_evaluated(db: Session, date: str, user_id: int) -> bool:
     note_prefix = f"TIMELINE_EVAL {date} "
-    return db.query(ScoreRecord).filter(ScoreRecord.notes.like(f"{note_prefix}%")).first() is not None
+    return db.query(ScoreRecord).filter(ScoreRecord.notes.like(f"{note_prefix}%"), ScoreRecord.user_id == user_id).first() is not None
 
 
 def validate_iso_date(date_str: str) -> None:
@@ -87,9 +141,14 @@ def validate_iso_date(date_str: str) -> None:
 
 app = FastAPI(title="Discipline OS", version="1.0.0")
 
+# Cấp quyền cho Frontend cổng 5500 được phép lấy dữ liệu
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://127.0.0.1:5500",
+        "http://localhost:5500"
+    ],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -139,26 +198,61 @@ class IntelRequest(BaseModel):
     timeframe: int = 30
 
 
+class RegisterRequest(BaseModel):
+    username: str
+    password: str
+
+
+# ─── AUTH ENDPOINTS ───────────────────────────────────────────────────────────
+
+@app.post("/api/auth/register")
+def register(req: RegisterRequest, db: Session = Depends(get_db)):
+    existing = db.query(User).filter(User.username == req.username).first()
+    if existing:
+        raise HTTPException(status_code=409, detail="Operative ID already registered")
+    hashed = hash_password(req.password)
+    user = User(username=req.username, hashed_password=hashed)
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return {"message": "OPERATIVE REGISTERED", "username": user.username}
+
+
+@app.post("/api/auth/login")
+def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.username == form_data.username).first()
+    if not user or not verify_password(form_data.password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="ACCESS DENIED")
+    token = create_access_token({"sub": user.username})
+    return {"access_token": token, "token_type": "bearer"}
+
+
+@app.get("/api/auth/me")
+def get_me(current_user: User = Depends(get_current_user)):
+    return {"username": current_user.username, "created_at": current_user.created_at.isoformat()}
+
+
 # ─── ENDPOINTS ────────────────────────────────────────────────────────────────
 
 @app.get("/api/score")
-def get_score(db: Session = Depends(get_db)):
-    score = get_total_score(db)
+def get_score(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    score = get_total_score(db, current_user.id)
     return {"total_score": score}
 
 
 @app.post("/api/log")
-def log_day(req: LogDayRequest, db: Session = Depends(get_db)):
+def log_day(req: LogDayRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     if req.status not in ("SUCCESS", "FAILURE"):
         raise HTTPException(status_code=400, detail="status must be SUCCESS or FAILURE")
     delta = 1 if req.status == "SUCCESS" else -2
-    current = get_total_score(db)
+    current = get_total_score(db, current_user.id)
     new_score = current + delta
     record = ScoreRecord(
         status=req.status,
         delta=delta,
         notes=req.notes,
         cumulative_score=new_score,
+        user_id=current_user.id
     )
     db.add(record)
     db.commit()
@@ -173,11 +267,11 @@ def log_day(req: LogDayRequest, db: Session = Depends(get_db)):
 
 
 @app.get("/api/tasks")
-def get_tasks(date: str, db: Session = Depends(get_db)):
+def get_tasks(date: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     validate_iso_date(date)
     tasks = (
         db.query(TimelineTask)
-        .filter(TimelineTask.date == date)
+        .filter(TimelineTask.date == date, TimelineTask.user_id == current_user.id)
         .order_by(TimelineTask.id.asc())
         .all()
     )
@@ -195,11 +289,11 @@ def get_tasks(date: str, db: Session = Depends(get_db)):
 
 
 @app.post("/api/tasks")
-def create_task(req: TimelineTaskCreateRequest, db: Session = Depends(get_db)):
+def create_task(req: TimelineTaskCreateRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     validate_iso_date(req.date)
     if not req.description or not req.description.strip():
         raise HTTPException(status_code=400, detail="description is required")
-    if is_date_locked(db, req.date):
+    if is_date_locked(db, req.date, current_user.id):
         raise HTTPException(status_code=409, detail="date already evaluated and locked")
 
     task = TimelineTask(
@@ -208,6 +302,7 @@ def create_task(req: TimelineTaskCreateRequest, db: Session = Depends(get_db)):
         is_completed=False,
         is_locked=False,
         parent_id=req.parent_id,
+        user_id=current_user.id
     )
     db.add(task)
     db.commit()
@@ -285,16 +380,16 @@ def delete_task(task_id: int, db: Session = Depends(get_db)):
 
 
 @app.post("/api/evaluate_date")
-def evaluate_date(req: EvaluateDateRequest, db: Session = Depends(get_db)):
+def evaluate_date(req: EvaluateDateRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     validate_iso_date(req.date)
 
     tasks = (
         db.query(TimelineTask)
-        .filter(TimelineTask.date == req.date)
+        .filter(TimelineTask.date == req.date, TimelineTask.user_id == current_user.id)
         .order_by(TimelineTask.id.asc())
         .all()
     )
-    if is_date_already_evaluated(db, req.date):
+    if is_date_already_evaluated(db, req.date, current_user.id):
         raise HTTPException(status_code=409, detail="date already evaluated")
     total_tasks = len(tasks)
     completed_tasks = sum(1 for t in tasks if t.is_completed)
@@ -303,7 +398,7 @@ def evaluate_date(req: EvaluateDateRequest, db: Session = Depends(get_db)):
     status = "SUCCESS" if success else "FAILURE"
     delta = 1 if success else -2
 
-    current = get_total_score(db)
+    current = get_total_score(db, current_user.id)
     new_score = current + delta
 
     record = ScoreRecord(
@@ -311,6 +406,7 @@ def evaluate_date(req: EvaluateDateRequest, db: Session = Depends(get_db)):
         delta=delta,
         notes=f"TIMELINE_EVAL {req.date} ({completed_tasks}/{total_tasks})",
         cumulative_score=new_score,
+        user_id=current_user.id
     )
     db.add(record)
 
@@ -332,13 +428,14 @@ def evaluate_date(req: EvaluateDateRequest, db: Session = Depends(get_db)):
 
 
 @app.get("/api/history")
-def get_history(limit: int = 100, db: Session = Depends(get_db)):
+def get_history(limit: int = 100, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     if limit < 1:
         raise HTTPException(status_code=400, detail="limit must be >= 1")
     if limit > 500:
         limit = 500
     records = (
         db.query(ScoreRecord)
+        .filter(ScoreRecord.user_id == current_user.id)
         .order_by(ScoreRecord.id.desc())
         .limit(limit)
         .all()
@@ -357,7 +454,7 @@ def get_history(limit: int = 100, db: Session = Depends(get_db)):
 
 
 @app.get("/api/history/range")
-def get_history_range(days: int = 365, db: Session = Depends(get_db)):
+def get_history_range(days: int = 365, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     if days < 1:
         raise HTTPException(status_code=400, detail="days must be >= 1")
     if days > 3650:
@@ -365,7 +462,7 @@ def get_history_range(days: int = 365, db: Session = Depends(get_db)):
     since = datetime.utcnow() - timedelta(days=days)
     records = (
         db.query(ScoreRecord)
-        .filter(ScoreRecord.timestamp >= since)
+        .filter(ScoreRecord.timestamp >= since, ScoreRecord.user_id == current_user.id)
         .order_by(ScoreRecord.timestamp.asc())
         .all()
     )
@@ -381,11 +478,11 @@ def get_history_range(days: int = 365, db: Session = Depends(get_db)):
 
 
 @app.get("/api/analytics")
-def get_analytics(db: Session = Depends(get_db)):
+def get_analytics(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     since_30 = datetime.utcnow() - timedelta(days=30)
     records_30 = (
         db.query(ScoreRecord)
-        .filter(ScoreRecord.timestamp >= since_30)
+        .filter(ScoreRecord.timestamp >= since_30, ScoreRecord.user_id == current_user.id)
         .order_by(ScoreRecord.timestamp.asc())
         .all()
     )
@@ -396,13 +493,13 @@ def get_analytics(db: Session = Depends(get_db)):
         for r in records_30
     ]
     
-    all_records = db.query(ScoreRecord).all()
+    all_records = db.query(ScoreRecord).filter(ScoreRecord.user_id == current_user.id).all()
     total_days = len(all_records)
     total_success_all = sum(1 for r in all_records if r.status == "SUCCESS")
     overall_rate = round(total_success_all * 100 / total_days) if total_days > 0 else 0
     
     return {
-        "total_score": get_total_score(db),
+        "total_score": get_total_score(db, current_user.id),
         "success_30d": total_success,
         "failure_30d": total_failure,
         "trend_30d": trend,
@@ -412,18 +509,18 @@ def get_analytics(db: Session = Depends(get_db)):
 
 
 @app.post("/api/reset")
-def reset_score(req: ResetRequest, db: Session = Depends(get_db)):
+def reset_score(req: ResetRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     if not req.confirm:
         raise HTTPException(status_code=400, detail="confirm must be true")
-    db.query(ScoreRecord).delete()
-    db.query(TimelineTask).delete()
+    db.query(ScoreRecord).filter(ScoreRecord.user_id == current_user.id).delete()
+    db.query(TimelineTask).filter(TimelineTask.user_id == current_user.id).delete()
     
     # Reset streak and shields in config
-    streak_config = db.query(AppConfig).filter(AppConfig.key == "discipline_streak").first()
+    streak_config = db.query(AppConfig).filter(AppConfig.key == "discipline_streak", AppConfig.user_id == current_user.id).first()
     if streak_config:
         streak_config.value = "0"
         
-    shield_config = db.query(AppConfig).filter(AppConfig.key == "streak_shields").first()
+    shield_config = db.query(AppConfig).filter(AppConfig.key == "streak_shields", AppConfig.user_id == current_user.id).first()
     if shield_config:
         shield_config.value = "0"
 
@@ -432,10 +529,10 @@ def reset_score(req: ResetRequest, db: Session = Depends(get_db)):
 
 
 @app.post("/api/chat")
-def chat_with_coach(req: ChatRequest, db: Session = Depends(get_db)):
+def chat_with_coach(req: ChatRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     if not DEEPSEEK_API_KEY:
         raise HTTPException(status_code=503, detail="DEEPSEEK_API_KEY not configured")
-    total_score = get_total_score(db)
+    total_score = get_total_score(db, current_user.id)
     personality_prompts = {
         "RUTHLESS_MODE": (
             "You are a ruthless, no-excuses discipline coach. You speak in short, brutal, "
@@ -507,20 +604,31 @@ def chat_with_coach(req: ChatRequest, db: Session = Depends(get_db)):
 
 
 @app.post("/api/intel")
-def generate_intel(req: IntelRequest, db: Session = Depends(get_db)):
+def generate_intel(req: IntelRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     cutoff_date = datetime.utcnow() - timedelta(days=req.timeframe)
-    records = db.query(ScoreRecord).filter(ScoreRecord.timestamp >= cutoff_date).order_by(ScoreRecord.timestamp.asc()).all()
+    records = db.query(ScoreRecord).filter(ScoreRecord.timestamp >= cutoff_date, ScoreRecord.user_id == current_user.id).order_by(ScoreRecord.timestamp.asc()).all()
     
     # Calculate execution ratio
     total_days = req.timeframe
     success_days = sum(1 for r in records if r.status == 'SUCCESS')
     ratio = int((success_days / len(records)) * 100) if records else 0
     
-    # Compile trend data (last N records)
+    # Compile trend data (last N days)
     trend_data = []
+    # Create a map of date string to score
+    record_map = {}
     for r in records:
         score_val = 1 if r.status == "SUCCESS" else (-1 if r.status == "FAILURE" else 0)
-        trend_data.append({"date": r.timestamp.strftime("%Y-%m-%d"), "score": score_val})
+        record_map[r.timestamp.strftime("%Y-%m-%d")] = score_val
+
+    # Iterate over the timeframe days up to today
+    for i in range(req.timeframe - 1, -1, -1):
+        d = datetime.utcnow() - timedelta(days=i)
+        date_str = d.strftime("%Y-%m-%d")
+        trend_data.append({
+            "date": date_str,
+            "score": record_map.get(date_str, 0)
+        })
         
     # Generate Actionable Intel via DeepSeek
     intel_bullets = []
@@ -558,9 +666,9 @@ def generate_intel(req: IntelRequest, db: Session = Depends(get_db)):
 
 
 @app.post("/api/braindump")
-def braindump(req: BraindumpRequest, db: Session = Depends(get_db)):
+def braindump(req: BraindumpRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     validate_iso_date(req.date)
-    if is_date_locked(db, req.date):
+    if is_date_locked(db, req.date, current_user.id):
         raise HTTPException(status_code=409, detail="date already evaluated and locked")
     
     if not DEEPSEEK_API_KEY:
@@ -607,7 +715,8 @@ def braindump(req: BraindumpRequest, db: Session = Depends(get_db)):
                 description=p_desc,
                 is_completed=False,
                 is_locked=False,
-                parent_id=None
+                parent_id=None,
+                user_id=current_user.id
             )
             db.add(p_task)
             db.commit()
@@ -623,7 +732,8 @@ def braindump(req: BraindumpRequest, db: Session = Depends(get_db)):
                     description=s_desc,
                     is_completed=False,
                     is_locked=False,
-                    parent_id=p_task.id
+                    parent_id=p_task.id,
+                    user_id=current_user.id
                 )
                 db.add(s_task)
                 
@@ -635,19 +745,19 @@ def braindump(req: BraindumpRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail="Failed to process braindump with AI")
 
 @app.get("/api/config")
-def get_config(db: Session = Depends(get_db)):
-    rows = db.query(AppConfig).all()
+def get_config(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    rows = db.query(AppConfig).filter(AppConfig.user_id == current_user.id).all()
     return {r.key: r.value for r in rows}
 
 
 @app.post("/api/config")
-def set_config(payload: dict, db: Session = Depends(get_db)):
+def set_config(payload: dict, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     for key, value in payload.items():
-        row = db.query(AppConfig).filter(AppConfig.key == key).first()
+        row = db.query(AppConfig).filter(AppConfig.key == key, AppConfig.user_id == current_user.id).first()
         if row:
             row.value = str(value)
         else:
-            db.add(AppConfig(key=key, value=str(value)))
+            db.add(AppConfig(key=key, value=str(value), user_id=current_user.id))
     db.commit()
     return {"message": "Config updated"}
 
