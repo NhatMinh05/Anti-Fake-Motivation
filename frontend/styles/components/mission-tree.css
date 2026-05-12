@@ -145,20 +145,37 @@
 
 .braindump-textarea {
   width: 100%;
-  height: 120px;
+  height: 140px;
   background: #0E0E0E;
   border: 1px solid #2A2A2A;
   color: #E5E7EB;
   padding: 12px;
   font-family: 'Space Mono', monospace;
   font-size: 13px;
-  resize: vertical;
+  resize: none; /* Khóa resize để giữ layout chuẩn */
   margin-bottom: 10px;
+  transition: border-color 0.3s, box-shadow 0.3s;
 }
 
 .braindump-textarea:focus {
   outline: none;
   border-color: #38BDF8;
+  box-shadow: inset 0 0 10px rgba(56, 189, 248, 0.1);
+}
+
+/* Custom Scrollbar cho Braindump - Hiện đại, tệp màu nền */
+.braindump-textarea::-webkit-scrollbar {
+  width: 3px;
+}
+.braindump-textarea::-webkit-scrollbar-track {
+  background: transparent; /* Trong suốt để tệp vào nền */
+}
+.braindump-textarea::-webkit-scrollbar-thumb {
+  background: rgba(56, 189, 248, 0.1); /* Màu xanh rất mờ */
+  border-radius: 10px;
+}
+.braindump-textarea::-webkit-scrollbar-thumb:hover {
+  background: rgba(56, 189, 248, 0.5); /* Hiện rõ hơn khi tương tác */
 }
 
 .ai-pulse-text {

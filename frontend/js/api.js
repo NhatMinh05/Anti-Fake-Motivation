@@ -26,7 +26,20 @@ export async function api(path, options = {}) {
 }
 
 export async function getMe() {
-  return api('/auth/me');
+  return api('/me');
+}
+
+export async function updateMe(data) {
+  return api('/me', {
+    method: 'PUT',
+    body: JSON.stringify(data)
+  });
+}
+
+export async function deleteMe() {
+  return api('/me', {
+    method: 'DELETE'
+  });
 }
 
 export function logout() {

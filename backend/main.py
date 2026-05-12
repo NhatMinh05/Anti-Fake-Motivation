@@ -1,9 +1,11 @@
-from fastapi import FastAPI, HTTPException, Depends
+# DISCIPLINE OS BACKEND - REBOOT HEARTBEAT
+from fastapi import FastAPI, HTTPException, Depends, Request
+from fastapi.responses import RedirectResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text, Boolean, ForeignKey
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text, Boolean, ForeignKey, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from datetime import datetime, timedelta
@@ -12,6 +14,7 @@ import os
 from dotenv import load_dotenv
 from openai import OpenAI
 import openai
+import httpx
 from passlib.context import CryptContext
 import hashlib, secrets
 from jose import JWTError, jwt
@@ -24,6 +27,14 @@ DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
 SECRET_KEY = os.getenv("SECRET_KEY", "discipline-os-ultra-secret-key-change-me")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 30
+
+GITHUB_CLIENT_ID = os.getenv("GITHUB_CLIENT_ID", "")
+GITHUB_CLIENT_SECRET = os.getenv("GITHUB_CLIENT_SECRET", "")
+GITHUB_REDIRECT_URI = os.getenv("GITHUB_REDIRECT_URI", "http://127.0.0.1:8000/api/auth/github/callback")
+
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
+GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI", "http://127.0.0.1:8000/api/auth/google/callback")
 
 # Use built-in hashlib for Python 3.13 compatibility
 def hash_password(password: str) -> str:
@@ -83,10 +94,26 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String(64), unique=True, index=True)
     hashed_password = Column(String(256))
+    avatar_url = Column(Text, nullable=True)
+    display_name = Column(String(64), nullable=True) # Tên hiển thị
+    bio = Column(Text, nullable=True) # Châm ngôn / Tiểu sử
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
 Base.metadata.create_all(bind=engine)
+
+# AUTO-MIGRATION: Thêm cột avatar_url nếu chưa có (để tránh lỗi Internal Server Error)
+with engine.connect() as conn:
+    try:
+        conn.execute(text("ALTER TABLE users ADD COLUMN avatar_url TEXT"))
+    except Exception: pass
+    try:
+        conn.execute(text("ALTER TABLE users ADD COLUMN display_name TEXT"))
+    except Exception: pass
+    try:
+        conn.execute(text("ALTER TABLE users ADD COLUMN bio TEXT"))
+    except Exception: pass
+    conn.commit()
 
 
 def get_db():
@@ -140,6 +167,10 @@ def validate_iso_date(date_str: str) -> None:
 
 
 app = FastAPI(title="Discipline OS", version="1.0.0")
+
+@app.get("/ping")
+def ping():
+    return {"message": "Dung file roi do Minh oi!"}
 
 # Cấp quyền cho Frontend cổng 5500 được phép lấy dữ liệu
 app.add_middleware(
@@ -227,9 +258,175 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     return {"access_token": token, "token_type": "bearer"}
 
 
-@app.get("/api/auth/me")
+@app.get("/api/me")
 def get_me(current_user: User = Depends(get_current_user)):
-    return {"username": current_user.username, "created_at": current_user.created_at.isoformat()}
+    return {
+        "id": current_user.id,
+        "username": current_user.username,
+        "display_name": current_user.display_name or current_user.username,
+        "avatar_url": current_user.avatar_url,
+        "bio": current_user.bio or ""
+    }
+
+
+class UserUpdate(BaseModel):
+    display_name: Optional[str] = None
+    bio: Optional[str] = None
+
+@app.put("/api/me")
+def update_me(data: UserUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if data.display_name is not None:
+        current_user.display_name = data.display_name
+    if data.bio is not None:
+        current_user.bio = data.bio
+    db.commit()
+    db.refresh(current_user)
+    return {"message": "Profile updated successfully"}
+
+
+@app.delete("/api/me")
+def delete_me(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    # Xóa sạch dữ liệu liên quan
+    db.query(ScoreRecord).filter(ScoreRecord.user_id == current_user.id).delete()
+    db.query(AppConfig).filter(AppConfig.user_id == current_user.id).delete()
+    db.query(TimelineTask).filter(TimelineTask.user_id == current_user.id).delete()
+    db.delete(current_user)
+    db.commit()
+    return {"message": "Account purged from system"}
+
+
+@app.get("/api/auth/github/login")
+def github_login():
+    # Kiểm tra xem đã lấy được ID thật chưa
+    if not GITHUB_CLIENT_ID or GITHUB_CLIENT_ID == "your_github_client_id_here":
+        return {"error": "Lỗi: Chưa nhận được Client ID thật từ file .env"}
+        
+    url = f"https://github.com/login/oauth/authorize?client_id={GITHUB_CLIENT_ID}&redirect_uri={GITHUB_REDIRECT_URI}&scope=user:email"
+    return RedirectResponse(url)
+
+
+@app.get("/api/auth/github/callback")
+async def github_callback(code: Optional[str] = None, error: Optional[str] = None, db: Session = Depends(get_db)):
+    # 1. Nếu người dùng bấm Cancel hoặc có lỗi từ GitHub (không có code)
+    if not code:
+        # Chuyển hướng họ quay lại trang login thay vì hiện lỗi JSON
+        return RedirectResponse(url="http://127.0.0.1:5500/login.html?status=denied")
+
+    # 2. Nếu có code (người dùng bấm Agree), tiếp tục xử lý đổi token...
+
+    # Exchange code for access token
+    async with httpx.AsyncClient() as client:
+        token_res = await client.post(
+            "https://github.com/login/oauth/access_token",
+            data={
+                "client_id": GITHUB_CLIENT_ID,
+                "client_secret": GITHUB_CLIENT_SECRET,
+                "code": code,
+                "redirect_uri": GITHUB_REDIRECT_URI,
+            },
+            headers={"Accept": "application/json"},
+        )
+        token_data = token_res.json()
+        access_token = token_data.get("access_token")
+        if not access_token:
+            return HTMLResponse(content="<h2>GitHub Auth Failed: Invalid Code</h2>", status_code=400)
+
+        # Get user info
+        user_res = await client.get(
+            "https://api.github.com/user",
+            headers={"Authorization": f"token {access_token}"},
+        )
+        user_data = user_res.json()
+        github_username = user_data.get("login")
+        avatar_url = user_data.get("avatar_url") # Lấy ảnh đại diện GitHub
+        
+        if not github_username:
+            return HTMLResponse(content="<h2>GitHub Auth Failed: Could not get user info</h2>", status_code=400)
+
+        # Find or create user
+        username = f"gh_{github_username}"
+        user = db.query(User).filter(User.username == username).first()
+        if not user:
+            user = User(username=username, hashed_password=hash_password(secrets.token_hex(16)), avatar_url=avatar_url)
+            db.add(user)
+        else:
+            user.avatar_url = avatar_url
+            
+        db.commit()
+        db.refresh(user)
+
+        # Create our own JWT
+        token = create_access_token({"sub": user.username})
+        
+        # Chuyển hướng về frontend kèm theo Token trên URL để frontend tự lưu
+        return RedirectResponse(url=f"http://127.0.0.1:5500/index.html?token={token}")
+
+
+@app.get("/api/auth/google/login")
+def google_login():
+    if not GOOGLE_CLIENT_ID or GOOGLE_CLIENT_ID == "your_google_client_id_here":
+        return {"error": "Lỗi: Chưa nhận được Google Client ID thật từ file .env"}
+    
+    url = (
+        "https://accounts.google.com/o/oauth2/v2/auth"
+        f"?client_id={GOOGLE_CLIENT_ID}"
+        f"&redirect_uri={GOOGLE_REDIRECT_URI}"
+        "&response_type=code"
+        "&scope=openid%20email%20profile"
+        "&access_type=offline"
+    )
+    return RedirectResponse(url)
+
+
+@app.get("/api/auth/google/callback")
+async def google_callback(code: Optional[str] = None, error: Optional[str] = None, db: Session = Depends(get_db)):
+    if not code:
+        return RedirectResponse(url="http://127.0.0.1:5500/login.html?status=denied")
+
+    async with httpx.AsyncClient() as client:
+        # Exchange code for token
+        token_res = await client.post(
+            "https://oauth2.googleapis.com/token",
+            data={
+                "client_id": GOOGLE_CLIENT_ID,
+                "client_secret": GOOGLE_CLIENT_SECRET,
+                "code": code,
+                "grant_type": "authorization_code",
+                "redirect_uri": GOOGLE_REDIRECT_URI,
+            },
+        )
+        token_data = token_res.json()
+        access_token = token_data.get("access_token")
+        if not access_token:
+            return HTMLResponse(content=f"<h2>Google Auth Failed: {token_data.get('error_description', 'No access token')}</h2>", status_code=400)
+
+        # Get user info
+        user_res = await client.get(
+            "https://www.googleapis.com/oauth2/v3/userinfo",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+        user_data = user_res.json()
+        email = user_data.get("email")
+        picture = user_data.get("picture") # Lấy ảnh đại diện Google
+
+        if not email:
+            return HTMLResponse(content="<h2>Google Auth Failed: Could not get email</h2>", status_code=400)
+
+        # Use email as username (prefixed)
+        username = f"google_{email}"
+        user = db.query(User).filter(User.username == username).first()
+        if not user:
+            user = User(username=username, hashed_password=hash_password(secrets.token_hex(16)), avatar_url=picture)
+            db.add(user)
+        else:
+            # Cập nhật ảnh đại diện mới nhất
+            user.avatar_url = picture
+
+        db.commit()
+        db.refresh(user)
+
+        token = create_access_token({"sub": user.username})
+        return RedirectResponse(url=f"http://127.0.0.1:5500/index.html?token={token}")
 
 
 # ─── ENDPOINTS ────────────────────────────────────────────────────────────────

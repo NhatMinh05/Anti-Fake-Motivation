@@ -5,6 +5,7 @@ import { renderDashboard, updateScore } from '../components/dashboard.js';
 import { renderIntelFeed } from '../components/intelFeed.js';
 import { renderStrikeRecord } from '../components/strikeRecord.js';
 import { renderSystemConfig } from '../components/systemConfig.js';
+import { renderAccount } from '../components/account.js';
 import {
   renderAIDrawer,
   loadConversations,
@@ -65,8 +66,9 @@ const intelCache = { data: null, ts: 0, timeframe: null };
 const INTEL_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
 function showSection(id) {
-  ['mission', 'intel', 'record', 'config'].forEach(s => {
-    document.getElementById(s)?.classList.toggle('hidden', s !== id);
+  ['mission', 'intel', 'record', 'config', 'account'].forEach(s => {
+    const el = document.getElementById(s);
+    if (el) el.classList.toggle('hidden', s !== id);
   });
 }
 
@@ -440,6 +442,25 @@ async function _refreshAll() {
     if (sideStreak) sideStreak.textContent = localStorage.getItem('discipline_streak') || '0';
     if (sideShield) sideShield.textContent = localStorage.getItem('streak_shields') || '0';
 
+    // Fetch User Info for Sidebar
+    try {
+      const user = await getMe();
+      const sideUsername = document.getElementById('sideUsername');
+      const opAvatar = document.getElementById('opAvatar');
+      
+      if (sideUsername) sideUsername.textContent = user.username.toUpperCase();
+      if (opAvatar) {
+        if (user.avatar_url) {
+          opAvatar.innerHTML = `<img src="${user.avatar_url}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
+          opAvatar.style.border = 'none';
+        } else {
+          opAvatar.textContent = user.username.charAt(0).toUpperCase();
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to fetch user info:', err);
+    }
+
     updateScore(state.score);
     renderHistoryTable();
     renderHeatmap30(rangeData.slice(-30));
@@ -533,6 +554,38 @@ function bindEvents() {
       refreshIntelView();
     }
   });
+
+  // User Profile Dropdown Logic
+  const userTrigger = document.getElementById('userTrigger');
+  const userDropdown = document.getElementById('userDropdown');
+  
+  if (userTrigger && userDropdown) {
+    userTrigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      userDropdown.classList.toggle('active');
+      userDropdown.classList.toggle('hidden');
+      userTrigger.classList.toggle('active');
+    });
+
+    // Close dropdown on click outside
+    document.addEventListener('click', (e) => {
+      if (!userTrigger.contains(e.target) && !userDropdown.contains(e.target)) {
+        userDropdown.classList.remove('active');
+        userDropdown.classList.add('hidden');
+        userTrigger.classList.remove('active');
+      }
+    });
+
+    // Dropdown Items Navigation
+    userDropdown.querySelectorAll('.dropdown-item[data-section]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        showSection(btn.dataset.section);
+        userDropdown.classList.remove('active');
+        userDropdown.classList.add('hidden');
+        userTrigger.classList.remove('active');
+      });
+    });
+  }
 
   document.getElementById('intelTimeframe')?.addEventListener('change', refreshIntelView);
   document.getElementById('intelChartMode')?.addEventListener('change', refreshIntelView);
@@ -780,24 +833,26 @@ function bindEvents() {
   bindConversationButtons();
 }
 
-function mountLayout() {
+async function mountLayout() {
   renderSidebar(document.getElementById('sidebar'));
 
   const main = document.getElementById('mainContent');
   if (main) {
     main.innerHTML = '';
-    const sections = [
+    const renderers = [
       renderDashboard,
       renderIntelFeed,
       renderStrikeRecord,
-      renderSystemConfig
+      renderSystemConfig,
+      renderAccount
     ];
 
-    sections.forEach(renderer => {
+    // Chờ tất cả các section vẽ xong nội dung
+    await Promise.all(renderers.map(async (renderer) => {
       const mount = document.createElement('div');
-      renderer(mount);
-      main.appendChild(mount); // <--- Bơm trực tiếp khối DOM thật vào trang
-    });
+      await renderer(mount);
+      main.appendChild(mount);
+    }));
   }
 
   renderAIDrawer(document.getElementById('drawerMount'));
@@ -843,6 +898,19 @@ async function start() {
   await _refreshAll(); // call directly (not debounced) on first load
   hideSkeletons();
 }
+
+// Lắng nghe sự kiện đổi ngôn ngữ để vẽ lại giao diện tức thì
+window.addEventListener('language-changed', async () => {
+  const currentSection = ['mission', 'intel', 'record', 'config', 'account'].find(id => {
+    const el = document.getElementById(id);
+    return el && !el.classList.contains('hidden');
+  }) || 'mission';
+
+  await mountLayout();
+  bindEvents(); 
+  showSection(currentSection);
+  _refreshAll();
+});
 
 start().catch(err => {
   console.error(err);

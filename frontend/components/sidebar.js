@@ -1,15 +1,19 @@
+import { getTranslation } from '/js/i18n.js';
+
 export function renderSidebar(container) {
   container.innerHTML = `
     <div class="brand-card">
       <h1>Discipline OS</h1>
       <p>Anti-fake motivation core</p>
     </div>
+    
     <nav class="nav-list">
-      <button data-section="mission">Dashboard</button>
-      <button data-section="intel">Intel Feed</button>
-      <button data-section="record">Strike Record</button>
-      <button data-section="config">System Config</button>
+      <button class="active" data-section="mission">${getTranslation('dashboard')}</button>
+      <button data-section="intel">${getTranslation('intel_feed')}</button>
+      <button data-section="record">${getTranslation('strike_record')}</button>
+      <button data-section="config">${getTranslation('system_config')}</button>
     </nav>
+
     <div class="status-card" style="display:flex; flex-direction:column; gap:8px;">
       <div id="sysClock" style="font-family: 'Space Mono', monospace; color: #38BDF8; font-size: 14px; font-weight: bold; letter-spacing: 2px;">
         00:00:00 SYS
@@ -19,17 +23,27 @@ export function renderSidebar(container) {
         <span>SHIELD: <strong id="sideShield" style="color:#38BDF8;">0</strong></span>
       </div>
     </div>
-    <button id="openDrawerBtn" class="primary-btn">OPEN AI CONSOLE</button>
-    <div class="operative-footer">
-      <div class="operative-trigger mini" id="opTrigger" title="System Access">
-        <div class="op-avatar circular" id="opAvatar">?</div>
+
+    <button id="openDrawerBtn" class="primary-btn">${getTranslation('open_ai_console')}</button>
+
+    <div class="user-profile-container">
+      <div class="user-trigger" id="userTrigger">
+        <div class="avatar-wrapper">
+          <div class="op-avatar circular" id="opAvatar">?</div>
+          <div class="avatar-glow"></div>
+        </div>
+        <span class="operative-name" id="sideUsername">USER</span>
+        <span class="chevron">▼</span>
       </div>
-      
-      <div class="operative-menu mini-menu hidden" id="opMenu">
-        <div class="menu-header" id="sideUsername">OPERATIVE</div>
-        <button class="menu-item" id="logoutBtn">
-          <span class="menu-icon">⏻</span>
-          <span class="menu-text">TERMINATE SESSION</span>
+
+      <div id="userDropdown" class="dropdown-content hidden">
+        <div class="dropdown-arrow"></div>
+        <button class="dropdown-item" data-section="account">
+          ${getTranslation('my_account')}
+        </button>
+        <div class="dropdown-divider"></div>
+        <button class="dropdown-item terminate-link" id="logoutBtn">
+          ${getTranslation('log_out')}
         </button>
       </div>
     </div>
@@ -38,6 +52,11 @@ export function renderSidebar(container) {
 
 export function bindSidebarNavigation(onNavigate) {
   document.querySelectorAll('[data-section]').forEach(btn => {
-    btn.addEventListener('click', () => onNavigate(btn.dataset.section));
+    btn.addEventListener('click', () => {
+      // Update UI active state
+      document.querySelectorAll('[data-section]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      onNavigate(btn.dataset.section);
+    });
   });
 }

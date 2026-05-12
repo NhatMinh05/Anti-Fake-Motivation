@@ -9,6 +9,7 @@
 @import url('./components/ai-drawer.css');
 @import url('./components/toast.css');
 @import url('./components/mission-tree.css');
+@import url('./components/account.css');
 
 @import url('./themes/vercel.css');
 @import url('./themes/psycoframe.css');

@@ -167,3 +167,136 @@ body {
   color: #fb7185;
   min-height: 18px;
 }
+
+/* --- LOGIN BOX UPGRADES (FIXED) --- */
+.login-box {
+  position: relative; 
+  padding-top: 35px; /* Tăng khoảng trống phía trên cho thoáng */
+}
+
+/* Nút QR Code Canh lại góc và thu nhỏ cho tinh tế */
+.qr-corner-btn {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  width: 22px; /* Nhỏ lại cho thanh lịch */
+  height: 22px;
+  color: #38bdf8;
+  cursor: pointer;
+  transition: 0.3s;
+  opacity: 0.7;
+}
+.qr-corner-btn:hover {
+  opacity: 1;
+  transform: scale(1.1);
+  filter: drop-shadow(0 0 8px #38bdf8);
+}
+
+/* Khung bọc Password chứa nút Mắt */
+.password-wrapper {
+  position: relative;
+  width: 100%;
+}
+.password-wrapper input {
+  width: 100%;
+  padding-right: 65px !important; /* Ép không cho text chui xuống dưới nút SHOW */
+}
+/* Canh giữa hoàn hảo theo chiều dọc */
+.btn-toggle-pass {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%); /* Phép thuật canh giữa */
+  background: transparent;
+  border: none;
+  color: #64748b;
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  cursor: pointer;
+  transition: 0.2s;
+  padding: 0;
+  z-index: 5;
+}
+.btn-toggle-pass:hover { color: #38bdf8; }
+
+/* Quên Pass: Nằm dưới nút Đăng nhập, lệch trái */
+.forgot-wrapper {
+  margin-top: 12px;
+  text-align: left;
+}
+.forgot-wrapper a {
+  color: #64748b;
+  font-size: 11px;
+  font-family: 'Space Mono', monospace;
+  text-decoration: none;
+  transition: 0.2s;
+  letter-spacing: 1px;
+}
+.forgot-wrapper a:hover {
+  color: #38bdf8;
+  text-shadow: 0 0 5px rgba(56, 189, 248, 0.5);
+}
+
+/* Đăng ký: Nằm dưới cùng, canh giữa */
+.register-wrapper {
+  margin-top: 30px;
+  text-align: center;
+  font-size: 11px;
+  font-family: 'Space Mono', monospace;
+  letter-spacing: 1px;
+}
+.register-wrapper .muted-text {
+  color: #475569;
+  margin-right: 5px;
+}
+.register-wrapper a {
+  color: #10b981; /* Màu xanh Emerald cho nổi bật */
+  text-decoration: none;
+  font-weight: bold;
+  transition: 0.2s;
+}
+.register-wrapper a:hover {
+  color: #34d399;
+  text-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+}
+
+/* Đường kẻ chữ OR UPLINK VIA - Sáng sủa hơn */
+.social-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 25px 0 15px;
+  color: #94a3b8; /* Chữ sáng hơn */
+  font-size: 10px;
+  letter-spacing: 1.5px;
+}
+.social-divider::before, .social-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px dashed #334155; /* Đường kẻ sáng hơn */
+}
+.social-divider span { padding: 0 10px; }
+
+/* Nút Social Login */
+.social-logins {
+  display: flex;
+  gap: 12px;
+}
+.social-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px;
+  background: transparent;
+  border: 1px solid #334155;
+  color: #94a3b8;
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+.social-btn:hover { background: rgba(255,255,255,0.05); color: #fff; border-color: #64748b; }
+.social-btn.github:hover { border-color: #a855f7; color: #a855f7; box-shadow: 0 0 10px rgba(168,85,247,0.2); }
+.social-btn.google:hover { border-color: #f43f5e; color: #f43f5e; box-shadow: 0 0 10px rgba(244,63,94,0.2); }

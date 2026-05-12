@@ -661,6 +661,16 @@ export function renderDashboard(container) {
   // Braindump Logic
   toggleBraindumpBtn.addEventListener('click', () => {
     braindumpPanel.classList.toggle('active');
+    if (braindumpPanel.classList.contains('active')) {
+      braindumpText.focus();
+    }
+  });
+
+  braindumpText.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      processBraindumpBtn.click();
+    }
   });
 
   processBraindumpBtn.addEventListener('click', async () => {

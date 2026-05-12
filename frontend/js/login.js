@@ -1,3 +1,13 @@
+window.loginWithGithub = function() {
+  console.log("Redirecting to Backend...");
+  window.location.href = "http://127.0.0.1:8000/api/auth/github/login";
+};
+
+window.loginWithGoogle = function() {
+  console.log("Redirecting to Google Gateway...");
+  window.location.href = "http://127.0.0.1:8000/api/auth/google/login";
+};
+
 const bootLines = [
   "INITIALIZING DISCIPLINE OS...",
   "LOADING KERNEL MODULES... [OK]",
@@ -34,6 +44,32 @@ document.addEventListener('DOMContentLoaded', () => {
     return;
   }
   runBootSequence();
+
+  // 1. Chức năng Hiện/Ẩn Passcode
+  const togglePassBtn = document.getElementById('togglePass');
+  const passInput = document.getElementById('password');
+
+  if (togglePassBtn && passInput) {
+    togglePassBtn.addEventListener('click', () => {
+      if (passInput.type === 'password') {
+        passInput.type = 'text';
+        togglePassBtn.textContent = '[ HIDE ]';
+        togglePassBtn.style.color = '#38bdf8'; // Sáng màu lên
+      } else {
+        passInput.type = 'password';
+        togglePassBtn.textContent = '[ SHOW ]';
+        togglePassBtn.style.color = '#64748b'; // Trở lại màu xám
+      }
+    });
+  }
+
+  // 2. Mock click cho các nút mới (Sẽ nối API thật sau)
+  document.getElementById('qrLoginBtn')?.addEventListener('click', () => alert('SYSTEM: Đang bật Camera quét sinh trắc học...'));
+  document.getElementById('forgotPass')?.addEventListener('click', () => alert('SYSTEM: Vui lòng liên hệ Admin để Override Passcode.'));
+  document.getElementById('enrollNew')?.addEventListener('click', () => alert('SYSTEM: Chế độ đăng ký đã được kích hoạt tự động. Chỉ cần nhập ID và Pass mới.'));
+  console.log("SYSTEM: Authentication modules initialized.");
+  
+  // Nút GitHub và Google đã được xử lý trực tiếp bằng onclick trong HTML
 
   document.getElementById('loginForm').addEventListener('submit', async (e) => {
     e.preventDefault();

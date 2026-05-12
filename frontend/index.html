@@ -12,6 +12,15 @@
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIiBmaWxsPSIjMzhCREY4Ij48cGF0aCBkPSJNMjU2IDQ4QzE0MS4xIDQ4IDQ4IDE0MS4xIDQ4IDI1NnMxMDkuMSAyMDggMjA4IDIwOCAyMDgtOTMuMSAyMDgtMjA4UzM3MC45IDQ4IDI1NiA0OHptMCAzNzRjLTkxLjUgMC0xNjYtNzQuNS0xNjYtMTY2UzE2NC41IDkwIDI1NiA5MHMxNjYgNzQuNSAxNjYgMTY2LTc0LjUgMTY2LTE2NiAxNjZ6Ii8+PHBhdGggZD0iTTI1NiAxMjRMMTU0LjUgMjU2aDgzLjR2MTMybDExOS42LTEzMkgyNzR2LTk4eiIvPjwvc3ZnPg==">
   <script>
+    // RECEIVE TOKEN FROM URL (FOR SOCIAL LOGIN)
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    if (token) {
+      localStorage.setItem('access_token', token);
+      // Clean URL to remove token from history
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
     if (!localStorage.getItem('access_token')) {
       window.location.href = 'login.html';
     }
