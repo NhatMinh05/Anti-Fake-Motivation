@@ -26,7 +26,7 @@ export async function api(path, options = {}) {
 }
 
 export async function getMe() {
-  return api('/me');
+  return api('/me', { cache: 'no-store' });
 }
 
 export async function updateMe(data) {

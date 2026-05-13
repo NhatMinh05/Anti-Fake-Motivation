@@ -448,7 +448,7 @@ async function _refreshAll() {
       const sideUsername = document.getElementById('sideUsername');
       const opAvatar = document.getElementById('opAvatar');
       
-      if (sideUsername) sideUsername.textContent = user.username.toUpperCase();
+      if (sideUsername) sideUsername.textContent = (user.display_name || user.username).toUpperCase();
       if (opAvatar) {
         if (user.avatar_url) {
           opAvatar.innerHTML = `<img src="${user.avatar_url}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
@@ -1004,7 +1004,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const nameEl = document.getElementById('sideUsername');
     const avatarEl = document.getElementById('opAvatar');
     if (me?.username) {
-      if (nameEl) nameEl.textContent = me.username.toUpperCase();
+      if (nameEl) nameEl.textContent = (me.display_name || me.username).toUpperCase();
       if (avatarEl) avatarEl.textContent = me.username.substring(0, 2).toUpperCase();
     }
   }).catch(() => {});
