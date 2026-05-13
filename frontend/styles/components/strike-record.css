@@ -59,60 +59,22 @@
 /* Toolbar */
 .sr-toolbar {
   display: flex;
-  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 15px;
   align-items: center;
-  background: #131313;
-  border: 1px solid #2A2A2A;
+  background: #101018;
   padding: 15px;
   margin-bottom: 25px;
-  gap: 20px;
+  border: 1px solid rgba(0, 242, 255, 0.15);
+  border-radius: 6px;
 }
 
-.sr-search-wrap {
-  position: relative;
-  flex: 1;
-  display: flex;
-  align-items: center;
-}
 
-.sr-search-icon {
-  position: absolute;
-  left: 12px;
-  color: #9CA3AF;
-  font-size: 16px;
-}
-
-.sr-input {
-  width: 100%;
-  background: #0E0E0E;
-  border: 1px solid #2A2A2A;
-  color: #E5E7EB;
-  padding: 10px 10px 10px 35px;
-  font-family: 'Space Mono', monospace;
-  font-size: 13px;
-  outline: none;
-  transition: 0.2s;
-}
-.sr-input:focus {
-  border-color: #38BDF8;
-  box-shadow: 0 0 8px rgba(56, 189, 248, 0.2);
-}
 
 .sr-filters {
   display: flex;
   gap: 15px;
-}
-
-.sr-filter-group {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.sr-filter-label {
-  font-size: 11px;
-  color: #9CA3AF;
-  letter-spacing: 1px;
+  flex-wrap: wrap;
 }
 
 .sr-select {
@@ -124,10 +86,7 @@
   font-size: 12px;
   outline: none;
   cursor: pointer;
-  min-width: 130px;
-}
-.sr-select:focus {
-  border-color: #38BDF8;
+  min-width: 150px;
 }
 
 /* Panels */
@@ -221,27 +180,36 @@
 /* Data Table */
 .table-wrap {
   overflow-x: auto;
+  margin-top: 20px;
 }
+
 .sr-table {
   width: 100%;
   border-collapse: collapse;
-}
-.sr-table th, .sr-table td {
-  border-bottom: 1px solid #2A2A2A;
-  padding: 12px;
   text-align: left;
-  font-size: 12px;
-  white-space: nowrap;
+  font-size: 0.95rem;
 }
+
 .sr-table th {
-  color: #9CA3AF;
-  font-weight: normal;
+  color: #00f2ff;
+  padding: 12px 15px;
+  border-bottom: 2px solid rgba(0, 242, 255, 0.3);
   text-transform: uppercase;
   letter-spacing: 1px;
+  font-weight: bold;
 }
+
+.sr-table td {
+  padding: 12px 15px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  color: #a0a0b0;
+}
+
 .sr-table tbody tr {
   transition: background 0.2s;
 }
-.sr-table tbody tr:hover {
-  background: rgba(56, 189, 248, 0.03);
+
+.sr-table tbody tr:hover td {
+  background: rgba(0, 242, 255, 0.05);
+  color: #fff;
 }

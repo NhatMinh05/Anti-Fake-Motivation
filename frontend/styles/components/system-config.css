@@ -59,19 +59,37 @@
 }
 .config-panel.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 
-/* 1. AI PERSONA SELECTOR (Radio Buttons Ẩn) */
-.persona-selector { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-.persona-option input { display: none; /* Ẩn nút radio mặc định */ }
+/* 1. AI PERSONA SELECTOR (Chia làm 3 cột bằng nhau) */
+.persona-selector,
+.persona-matrix-container,
+.persona-matrix {
+    display: grid !important; 
+    grid-template-columns: repeat(3, 1fr) !important; 
+    gap: 20px !important; 
+    width: 100% !important;
+}
+.persona-option input { display: none; }
 .persona-card {
-    display: flex; flex-direction: column;
-    padding: 15px;
-    border: 1px solid #2A2A2A;
-    background: #0E0E0E;
+    display: flex; 
+    flex-direction: column;
+    justify-content: flex-start;
+    height: 100%;
+    box-sizing: border-box;
+    padding: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: #12121a;
+    border-radius: 6px;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.3s ease;
 }
 .persona-card .p-title { font-size: 14px; font-weight: bold; color: #E5E7EB; margin-bottom: 5px;}
 .persona-card .p-desc { font-size: 10px; color: #9CA3AF; }
+
+.persona-card:hover {
+    border-color: #38BDF8;
+    box-shadow: 0 0 15px rgba(56, 189, 248, 0.1);
+    transform: translateY(-2px);
+}
 
 /* Trạng thái được chọn (Active) */
 .persona-option input:checked + .persona-card {
@@ -81,11 +99,16 @@
 }
 .persona-option input:checked + .persona-card .p-title { color: #38BDF8; text-shadow: 0 0 8px rgba(56,189,248,0.5); }
 
-/* 2. CYBER TOGGLES (Thay cho Checkbox cũ) */
+/* 2. CYBER TOGGLES (Giao thức chạy ngầm) */
 .toggle-group { display: flex; flex-direction: column; gap: 12px; }
 .cyber-toggle {
-    display: flex; justify-content: space-between; align-items: center;
-    cursor: pointer; padding: 8px 0; border-bottom: 1px dashed #2A2A2A;
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center;
+    cursor: pointer; 
+    padding: 15px 20px; 
+    background: #0d0d14;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
 }
 .cyber-toggle .toggle-label { font-size: 13px; color: #E5E7EB; }
 .cyber-toggle input { display: none; }
@@ -106,7 +129,21 @@
     background: #10B981; transform: translateX(20px); box-shadow: 0 0 10px #10B981;
 }
 
-/* 3. CYBER DROPDOWN & BUTTONS */
+/* 3. CYBER DROPDOWN & BUTTONS (Hồ sơ & Giao diện) */
+.config-panel.two-col { 
+    display: grid; 
+    grid-template-columns: 1fr 1fr; 
+    gap: 40px; 
+    margin-top: 30px;
+}
+
+.col-item {
+    background: #101018;
+    padding: 20px;
+    border: 1px solid rgba(0, 242, 255, 0.15);
+    border-radius: 6px;
+}
+
 .cyber-select {
     width: 100%; padding: 10px;
     background: #0E0E0E; border: 1px solid #2A2A2A;

@@ -155,7 +155,7 @@ export const dictionary = {
     ai_coach: "BẬT AI COACH",
     ai_braindump: "[ AI LẬP KẾ HOẠCH ]",
     tactical_mission_tree: "SƠ ĐỒ NHIỆM VỤ CHIẾT THUẬT",
-    hold_to_execute: "[ GIỮ ĐỂ THỰC THI GIAO THỨC ĐÁNH GIÁ ]",
+    hold_to_execute: "[ GIỮ ĐỂ GHI NHẬN NỖ LỰC ]",
     day_streak_unlocked: "ĐÃ MỞ KHÓA CHUỖI NGÀY!",
     no_missions: "KHÔNG CÓ NHIỆM VỤ NÀO CHO NGÀY NÀY",
 

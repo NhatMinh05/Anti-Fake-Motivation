@@ -890,7 +890,7 @@ function startClock() {
 }
 
 async function start() {
-  mountLayout();
+  await mountLayout();
   loadConversations();
   renderConversationList();
   renderActiveConversation();

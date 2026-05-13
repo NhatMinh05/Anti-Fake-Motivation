@@ -729,7 +729,24 @@ def reset_score(req: ResetRequest, db: Session = Depends(get_db), current_user: 
 def chat_with_coach(req: ChatRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     if not DEEPSEEK_API_KEY:
         raise HTTPException(status_code=503, detail="DEEPSEEK_API_KEY not configured")
+    # 1. LẤY TỔNG ĐIỂM
     total_score = get_total_score(db, current_user.id)
+    
+    # 2. LẤY CHUỖI VÀ GIÁP (STREAK & SHIELDS)
+    streak_conf = db.query(AppConfig).filter(AppConfig.key == "discipline_streak", AppConfig.user_id == current_user.id).first()
+    streak = streak_conf.value if streak_conf else "0"
+    
+    shield_conf = db.query(AppConfig).filter(AppConfig.key == "streak_shields", AppConfig.user_id == current_user.id).first()
+    shields = shield_conf.value if shield_conf else "0"
+
+    # 3. LẤY LỊCH SỬ 7 NGÀY GẦN NHẤT
+    since_7d = datetime.utcnow() - timedelta(days=7)
+    recent_records = db.query(ScoreRecord).filter(ScoreRecord.timestamp >= since_7d, ScoreRecord.user_id == current_user.id).order_by(ScoreRecord.timestamp.asc()).all()
+    history_str = ", ".join([f"{r.timestamp.strftime('%m-%d')}: {r.status}" for r in recent_records[-7:]])
+    if not history_str:
+        history_str = "No recent data."
+
+    # 4. GÁN TÍNH CÁCH
     personality_prompts = {
         "RUTHLESS_MODE": (
             "You are a ruthless, no-excuses discipline coach. You speak in short, brutal, "
@@ -745,17 +762,24 @@ def chat_with_coach(req: ChatRequest, db: Session = Depends(get_db), current_use
             "no more than 2 sentences. Cut the noise. Only signal."
         ),
     }
+    
     system_prompt = personality_prompts.get(req.personality, personality_prompts["RUTHLESS_MODE"])
+    
+    # 5. BƠM DỮ LIỆU THỰC TẾ VÀO NÃO AI
     system_prompt += (
-        f" The user's current DISCIPLINE_SCORE is {total_score}. Factor this into every response. "
+        f"\n\n[USER CURRENT STATUS SYSTEM DATA]\n"
+        f"- DISCIPLINE_SCORE: {total_score}\n"
+        f"- CURRENT STREAK: {streak} days\n"
+        f"- ACTIVE SHIELDS: {shields}\n"
+        f"- RECENT LOGS (Last 7 days): {history_str}\n\n"
+        "CRITICAL INSTRUCTION: You now have full access to the user's real data above. "
+        "If they ask about their stats, streak, or history, answer accurately based ON THIS DATA. "
         "Language policy: infer reply language from recent conversation context. "
-        "If the latest user message is clearly English, reply in English. "
-        "If clearly Vietnamese, reply in Vietnamese. "
-        "For ambiguous short tokens like 'hi', 'ok', 'yes', keep the dominant language from recent context."
+        "If the latest user message is clearly Vietnamese, reply in Vietnamese."
     )
 
     selected_model = "deepseek-chat" if (req.model_mode or "FLASH").upper() == "FLASH" else "deepseek-reasoner"
-
+    
     messages = [{"role": "system", "content": system_prompt}]
     if req.history:
         for item in req.history[-8:]:

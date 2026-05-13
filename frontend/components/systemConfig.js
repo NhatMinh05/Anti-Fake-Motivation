@@ -1,12 +1,12 @@
 import { getTranslation } from '../js/i18n.js';
 
 export function renderSystemConfig(container) {
-  const currentTheme = localStorage.getItem('user_theme') || 'cyberpunk';
-  const soundOverride = localStorage.getItem('sys_sound_override') !== 'false';
-  const autoIntel = localStorage.getItem('sys_auto_intel') !== 'false';
-  const strictConfirm = localStorage.getItem('sys_strict_confirm') !== 'false';
+    const currentTheme = localStorage.getItem('user_theme') || 'cyberpunk';
+    const soundOverride = localStorage.getItem('sys_sound_override') !== 'false';
+    const autoIntel = localStorage.getItem('sys_auto_intel') !== 'false';
+    const strictConfirm = localStorage.getItem('sys_strict_confirm') !== 'false';
 
-  container.innerHTML = `
+    container.innerHTML = `
     <section id="config" class="section hidden">
       <div class="config-matrix">
           <div class="config-header">

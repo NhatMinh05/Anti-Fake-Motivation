@@ -18,8 +18,8 @@ export function renderStrikeRecord(container) {
         </div>
 
         <!-- TOOLBAR -->
-        <div class="sr-toolbar">
-          <div class="sr-search-wrap">
+        <div class="sr-toolbar record-filters">
+          <div class="search-wrapper">
             <span class="sr-search-icon">⌕</span>
             <input id="recordSearch" class="sr-input" type="text" data-i18n-placeholder="search_notes" placeholder="${getTranslation('search_notes')}" />
           </div>
