@@ -1,3 +1,5 @@
+import { getTranslation } from '/js/i18n.js';
+
 export function renderStrikeRecord(container) {
   container.innerHTML = `
     <section id="record" class="section hidden">
@@ -5,8 +7,8 @@ export function renderStrikeRecord(container) {
 
         <div class="sr-header">
           <div>
-            <h1 class="sr-title">STRIKE RECORD</h1>
-            <p class="sr-subtitle">Operational execution history &amp; annual discipline matrix</p>
+            <h1 class="sr-title" data-i18n="strike_record">${getTranslation('strike_record')}</h1>
+            <p class="sr-subtitle" data-i18n="operational_history">${getTranslation('operational_history')}</p>
           </div>
           <div class="sr-header-actions">
             <button id="exportCsvBtn" class="sr-btn sr-btn-export">
@@ -19,11 +21,11 @@ export function renderStrikeRecord(container) {
         <div class="sr-toolbar">
           <div class="sr-search-wrap">
             <span class="sr-search-icon">⌕</span>
-            <input id="recordSearch" class="sr-input" type="text" placeholder="Search operational notes..." />
+            <input id="recordSearch" class="sr-input" type="text" data-i18n-placeholder="search_notes" placeholder="${getTranslation('search_notes')}" />
           </div>
           <div class="sr-filters">
             <div class="sr-filter-group">
-              <label class="sr-filter-label">STATUS</label>
+              <label class="sr-filter-label" data-i18n="status">${getTranslation('status')}</label>
               <select id="recordStatusFilter" class="sr-select">
                 <option value="ALL">ALL</option>
                 <option value="SUCCESS">SUCCESS</option>
@@ -31,7 +33,7 @@ export function renderStrikeRecord(container) {
               </select>
             </div>
             <div class="sr-filter-group">
-              <label class="sr-filter-label">SORT</label>
+              <label class="sr-filter-label" data-i18n="sort">${getTranslation('sort')}</label>
               <select id="recordSort" class="sr-select">
                 <option value="newest">NEWEST FIRST</option>
                 <option value="oldest">OLDEST FIRST</option>
@@ -44,7 +46,7 @@ export function renderStrikeRecord(container) {
 
         <!-- ANNUAL MATRIX -->
         <div class="sr-panel">
-          <div class="sr-panel-label">[ ANNUAL DISCIPLINE MATRIX ]</div>
+          <div class="sr-panel-label" data-i18n="annual_matrix">[ ${getTranslation('annual_matrix')} ]</div>
           
           <div class="gh-heatmap-wrapper">
             <div class="gh-months" id="ghMonths"></div>
@@ -67,15 +69,15 @@ export function renderStrikeRecord(container) {
 
         <!-- TRANSACTION LOGS -->
         <div class="sr-panel">
-          <div class="sr-panel-label">[ TRANSACTION LOGS ]</div>
+          <div class="sr-panel-label" data-i18n="transaction_logs">[ ${getTranslation('transaction_logs')} ]</div>
           <div class="table-wrap">
             <table class="sr-table">
               <thead>
                 <tr>
-                  <th>TIMESTAMP</th>
-                  <th>STATUS</th>
-                  <th>DELTA</th>
-                  <th>OPERATIONAL NOTES</th>
+                  <th data-i18n="timestamp">${getTranslation('timestamp')}</th>
+                  <th data-i18n="status">${getTranslation('status')}</th>
+                  <th data-i18n="delta">${getTranslation('delta')}</th>
+                  <th data-i18n="notes">${getTranslation('notes')}</th>
                 </tr>
               </thead>
               <tbody id="historyBody"></tbody>

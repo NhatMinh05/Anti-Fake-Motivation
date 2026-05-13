@@ -1,3 +1,5 @@
+import { getTranslation } from '../js/i18n.js';
+
 export function renderSystemConfig(container) {
   const currentTheme = localStorage.getItem('user_theme') || 'cyberpunk';
   const soundOverride = localStorage.getItem('sys_sound_override') !== 'false';
@@ -8,52 +10,52 @@ export function renderSystemConfig(container) {
     <section id="config" class="section hidden">
       <div class="config-matrix">
           <div class="config-header">
-              <h1 class="matrix-title">SYSTEM CONFIGURATION</h1>
-              <p class="matrix-subtitle">Core execution parameters and AI behavior overrides</p>
+              <h1 class="matrix-title" data-i18n="sys_config_title">${getTranslation('sys_config_title')}</h1>
+              <p class="matrix-subtitle" data-i18n="sys_config_desc">${getTranslation('sys_config_desc')}</p>
           </div>
 
           <div class="config-panel">
-              <div class="panel-label">[ AI COACH PERSONA MATRIX ]</div>
+              <div class="panel-label" data-i18n="ai_persona_matrix">${getTranslation('ai_persona_matrix')}</div>
               <div class="persona-selector">
                   <label class="persona-option">
                       <input type="radio" class="persona-radio" name="coachPersona" value="RUTHLESS_MODE" checked>
                       <span class="persona-card">
-                          <span class="p-title">RUTHLESS</span>
-                          <span class="p-desc">Zero tolerance. Maximum roast.</span>
+                          <span class="p-title" data-i18n="ruthless">${getTranslation('ruthless')}</span>
+                          <span class="p-desc" data-i18n="ruthless_desc">${getTranslation('ruthless_desc')}</span>
                       </span>
                   </label>
                   <label class="persona-option">
                       <input type="radio" class="persona-radio" name="coachPersona" value="ANALYTICAL_MODE">
                       <span class="persona-card">
-                          <span class="p-title">ANALYTICAL</span>
-                          <span class="p-desc">Data-driven performance review.</span>
+                          <span class="p-title" data-i18n="analytical">${getTranslation('analytical')}</span>
+                          <span class="p-desc" data-i18n="analytical_desc">${getTranslation('analytical_desc')}</span>
                       </span>
                   </label>
                   <label class="persona-option">
                       <input type="radio" class="persona-radio" name="coachPersona" value="SILENT_OBSERVER">
                       <span class="persona-card">
-                          <span class="p-title">SILENT</span>
-                          <span class="p-desc">No feedback. Just execution.</span>
+                          <span class="p-title" data-i18n="silent">${getTranslation('silent')}</span>
+                          <span class="p-desc" data-i18n="silent_desc">${getTranslation('silent_desc')}</span>
                       </span>
                   </label>
               </div>
           </div>
 
           <div class="config-panel">
-              <div class="panel-label">[ RUNTIME PROTOCOLS ]</div>
+              <div class="panel-label" data-i18n="runtime_protocols">${getTranslation('runtime_protocols')}</div>
               <div class="toggle-group">
                   <label class="cyber-toggle">
-                      <span class="toggle-label">Alert Sound Override</span>
+                      <span class="toggle-label" data-i18n="alert_sound">${getTranslation('alert_sound')}</span>
                       <input id="toggleSound" type="checkbox" ${soundOverride ? 'checked' : ''}>
                       <span class="toggle-track"></span>
                   </label>
                   <label class="cyber-toggle">
-                      <span class="toggle-label">Auto Intel Feed Refresh</span>
+                      <span class="toggle-label" data-i18n="auto_intel">${getTranslation('auto_intel')}</span>
                       <input id="toggleAutoIntel" type="checkbox" ${autoIntel ? 'checked' : ''}>
                       <span class="toggle-track"></span>
                   </label>
                   <label class="cyber-toggle">
-                      <span class="toggle-label">Strict Reset Confirmation</span>
+                      <span class="toggle-label" data-i18n="strict_reset">${getTranslation('strict_reset')}</span>
                       <input id="toggleStrictConfirm" type="checkbox" ${strictConfirm ? 'checked' : ''}>
                       <span class="toggle-track"></span>
                   </label>
@@ -62,7 +64,7 @@ export function renderSystemConfig(container) {
 
           <div class="config-panel two-col">
               <div class="col-item">
-                  <div class="panel-label">[ THEME ENGINE ]</div>
+                  <div class="panel-label" data-i18n="theme_engine">${getTranslation('theme_engine')}</div>
                   <div class="custom-select-wrapper">
                       <select id="themeSelect" class="cyber-select">
                           <option value="cyberpunk" ${currentTheme === 'cyberpunk' ? 'selected' : ''}>Terminal Dark (Default)</option>
@@ -72,28 +74,28 @@ export function renderSystemConfig(container) {
                   </div>
               </div>
               <div class="col-item">
-                  <div class="panel-label">[ STATE PROFILES ]</div>
+                  <div class="panel-label" data-i18n="state_profiles">${getTranslation('state_profiles')}</div>
                   <div style="display:flex; gap:8px; margin-bottom:10px; align-items:center;">
-                      <input id="profileNameInput" class="cyber-select" style="flex:1; padding:6px 10px; font-size:11px;" placeholder="Profile name..." type="text">
+                      <input id="profileNameInput" class="cyber-select" style="flex:1; padding:6px 10px; font-size:11px;" data-i18n-placeholder="profile_placeholder" placeholder="${getTranslation('profile_placeholder')}" type="text">
                   </div>
                   <div class="action-buttons">
-                      <button id="savePresetBtn" class="cyber-btn default">SAVE</button>
-                      <button id="loadPresetBtn" class="cyber-btn ghost">LOAD</button>
-                      <button id="deletePresetBtn" class="cyber-btn delete">DEL</button>
+                      <button id="savePresetBtn" class="cyber-btn default" data-i18n="btn_save">${getTranslation('btn_save')}</button>
+                      <button id="loadPresetBtn" class="cyber-btn ghost" data-i18n="btn_load">${getTranslation('btn_load')}</button>
+                      <button id="deletePresetBtn" class="cyber-btn delete" data-i18n="btn_del">${getTranslation('btn_del')}</button>
                   </div>
                   <select id="profileSelect" class="cyber-select" style="margin-top:10px; font-size:11px;">
-                      <option value="">— Select profile —</option>
+                      <option value="" data-i18n="select_profile">${getTranslation('select_profile')}</option>
                   </select>
               </div>
           </div>
 
           <div class="config-panel danger-zone">
-              <div class="panel-label text-red">[ CRITICAL ACTIONS ]</div>
-              <p class="warning-text">WARNING: Resetting will permanently purge all execution score history. This action violates core discipline directives if done without cause.</p>
+              <div class="panel-label text-red" data-i18n="critical_actions">${getTranslation('critical_actions')}</div>
+              <p class="warning-text" data-i18n="purge_warning">${getTranslation('purge_warning')}</p>
               <div class="danger-actions">
-                  <button id="backupStateBtn" class="cyber-btn ghost-red">BACKUP LOCAL STATE</button>
-                  <button id="importStateBtn" class="cyber-btn ghost-red">IMPORT JSON</button>
-                  <button id="resetBtn" class="cyber-btn destructive">PURGE CORE SCORE</button>
+                  <button id="backupStateBtn" class="cyber-btn ghost-red" data-i18n="btn_backup">${getTranslation('btn_backup')}</button>
+                  <button id="importStateBtn" class="cyber-btn ghost-red" data-i18n="btn_import">${getTranslation('btn_import')}</button>
+                  <button id="resetBtn" class="cyber-btn destructive" data-i18n="btn_purge">${getTranslation('btn_purge')}</button>
               </div>
               <input id="importFileInput" type="file" accept=".json" style="display:none;">
           </div>

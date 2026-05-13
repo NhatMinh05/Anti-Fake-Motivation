@@ -15,6 +15,7 @@ import {
   appendChat,
   bindConversationButtons
 } from '../components/aiDrawer.js';
+import { applyTranslations } from './i18n.js';
 
 // ============================================================
 // TOAST NOTIFICATION SYSTEM
@@ -847,14 +848,16 @@ async function mountLayout() {
       renderAccount
     ];
 
-    // Chờ tất cả các section vẽ xong nội dung
     await Promise.all(renderers.map(async (renderer) => {
       const mount = document.createElement('div');
       await renderer(mount);
-      main.appendChild(mount);
+      main.appendChild(mount.firstElementChild || mount);
     }));
-  }
 
+    refreshAll();
+    applyTranslations();
+  }
+  
   renderAIDrawer(document.getElementById('drawerMount'));
 }
 
@@ -1032,3 +1035,14 @@ window.triggerAICoach = function(message, type = 'info') {
     console.error('Không tìm thấy class .chat-log để gửi tin nhắn!');
   }
 };
+
+// Lắng nghe sự kiện thay đổi ngôn ngữ để cập nhật UI
+window.addEventListener('language-changed', () => {
+  // 1. Cập nhật các phần tử tĩnh có data-i18n
+  applyTranslations();
+  
+  // 2. Vẽ lại Sidebar (vì nó chứa nhiều text động)
+  renderSidebar(document.getElementById('sidebar'));
+  // Re-bind navigation
+  bindSidebarNavigation();
+});

@@ -1,3 +1,4 @@
+import { getTranslation } from '../js/i18n.js';
 import { fetchTasks, addTask, toggleTask, deleteTask, evaluateDate, updateConfig, braindumpTasks } from '../js/api.js';
 
 const ROAST_MESSAGES = [
@@ -230,21 +231,21 @@ export function renderDashboard(container) {
   container.innerHTML = `
     <section id="mission" class="section">
       <header class="section-header">
-        <h2>Mission Control</h2>
-        <p>Strict Timeline Execution Protocol</p>
+        <h2 data-i18n="mission_control">${getTranslation('mission_control')}</h2>
+        <p data-i18n="strict_timeline_protocol">${getTranslation('strict_timeline_protocol')}</p>
         
         <div style="display: flex; align-items: center; gap: 16px; margin-top: 8px; flex-wrap: wrap;">
           <div style="font-size:36px;font-weight:700;color:#10B981;" id="scoreValue">0</div>
           
           <div id="streakBadge" style="background: rgba(251, 146, 60, 0.1); border: 1px solid #FB923C; color: #FB923C; padding: 4px 12px; border-radius: 9999px; font-size: 14px; font-weight: 600; font-family: 'Geist Mono', monospace; display: flex; align-items: center; gap: 6px;">
             <span class="streak-fire-icon" style="font-size: 16px;">🔥</span> 
-            <span id="streakCount">${localStorage.getItem('discipline_streak') || '0'}</span> <span class="streak-text">DAY STREAK</span>
+            <span id="streakCount">${localStorage.getItem('discipline_streak') || '0'}</span> <span class="streak-text" data-i18n="day_streak">${getTranslation('day_streak')}</span>
           </div>
           <div id="shieldContainer"></div>
 
           <div id="quickStats" style="display: flex; gap: 24px; margin-left: auto; font-size: 12px; color: #9CA3AF; text-align: right; border-left: 1px solid #2A2A2A; padding-left: 20px;">
-            <div>TOTAL DAYS<br><strong id="statTotalDays" style="color: #E5E7EB; font-size: 20px; font-family: monospace;">0</strong></div>
-            <div>WIN RATE<br><strong id="statWinRate" style="color: #10B981; font-size: 20px; font-family: monospace;">0%</strong></div>
+            <div><span data-i18n="total_days">${getTranslation('total_days')}</span><br><strong id="statTotalDays" style="color: #E5E7EB; font-size: 20px; font-family: monospace;">0</strong></div>
+            <div><span data-i18n="win_rate">${getTranslation('win_rate')}</span><br><strong id="statWinRate" style="color: #10B981; font-size: 20px; font-family: monospace;">0%</strong></div>
           </div>
         </div>
       </header>
@@ -252,22 +253,22 @@ export function renderDashboard(container) {
       <div class="card" style="background:#131313;border:1px solid #2A2A2A;border-radius:0;">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
           <div>
-            <div style="font-size:12px;opacity:0.75;">DISCIPLINE SCORE STATUS</div>
-            <div id="dashboardScoreHint" style="font-size:14px;color:#10B981;">CONNECTED TO CORE SCORE STREAM</div>
+            <div style="font-size:12px;opacity:0.75;" data-i18n="score_status">${getTranslation('score_status')}</div>
+            <div id="dashboardScoreHint" style="font-size:14px;color:#10B981;" data-i18n="core_score_stream">${getTranslation('core_score_stream')}</div>
           </div>
-          <div id="dashboardEvalStatus" style="font-size:12px;color:#38BDF8;">SYSTEM: READY</div>
+          <div id="dashboardEvalStatus" style="font-size:12px;color:#38BDF8;" data-i18n="system_ready">${getTranslation('system_ready')}</div>
         </div>
       </div>
 
       <div class="card" style="background:#131313;border:1px solid #2A2A2A;border-radius:0;position:relative;">
         <div style="display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;">
-          <button id="timelinePrevDate" style="background:#0E0E0E;border:1px solid #2A2A2A;color:#E5E7EB;padding:8px 12px;border-radius:0;">< PREV</button>
+          <button id="timelinePrevDate" style="background:#0E0E0E;border:1px solid #2A2A2A;color:#E5E7EB;padding:8px 12px;border-radius:0;" data-i18n="prev_date">${getTranslation('prev_date')}</button>
 
           <button id="timelineDateButton" style="min-width:160px;text-align:center;border:1px solid #2A2A2A;padding:8px 12px;background:#0E0E0E;color:#10B981;font-family:monospace;outline:none;cursor:pointer;">
             00/00/0000
           </button>
 
-          <button id="timelineNextDate" style="background:#0E0E0E;border:1px solid #2A2A2A;color:#E5E7EB;padding:8px 12px;border-radius:0;">NEXT ></button>
+          <button id="timelineNextDate" style="background:#0E0E0E;border:1px solid #2A2A2A;color:#E5E7EB;padding:8px 12px;border-radius:0;" data-i18n="next_date">${getTranslation('next_date')}</button>
         </div>
 
         <div id="timelineCalendarPanel" style="display:none;position:absolute;top:56px;left:50%;transform:translateX(-50%);width:min(420px,92vw);background:#0E0E0E;border:1px solid #2A2A2A;z-index:20;padding:12px;">
@@ -293,13 +294,13 @@ export function renderDashboard(container) {
 
       <div class="card" style="background:#131313;border:1px solid #2A2A2A;border-radius:0;">
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <input id="timelineTaskInput" type="text" placeholder=">_ ENTER_OBJECTIVE..."
+          <input id="timelineTaskInput" type="text" data-i18n-placeholder="enter_objective" placeholder="${getTranslation('enter_objective')}"
             style="flex:1;min-width:220px;background:#0E0E0E;border:1px solid #2A2A2A;color:#E5E7EB;padding:10px 12px;border-radius:0;outline:none;" />
-          <button id="timelineAddTaskBtn" style="background:#0E0E0E;border:1px solid #10B981;color:#10B981;padding:10px 16px;border-radius:0;cursor:pointer;">
-            [ ADD ]
+          <button id="timelineAddTaskBtn" style="background:#0E0E0E;border:1px solid #10B981;color:#10B981;padding:10px 16px;border-radius:0;cursor:pointer;" data-i18n="add_task">
+            ${getTranslation('add_task')}
           </button>
-          <button id="toggleBraindumpBtn" style="background:#0E0E0E;border:1px solid #38BDF8;color:#38BDF8;padding:10px 16px;border-radius:0;cursor:pointer;">
-            [ AI BRAINDUMP ]
+          <button id="toggleBraindumpBtn" style="background:#0E0E0E;border:1px solid #38BDF8;color:#38BDF8;padding:10px 16px;border-radius:0;cursor:pointer;" data-i18n="ai_braindump">
+            ${getTranslation('ai_braindump')}
           </button>
         </div>
 
@@ -316,16 +317,14 @@ export function renderDashboard(container) {
       </div>
 
       <div class="card" style="background:#131313;border:1px solid #2A2A2A;border-radius:0;">
-        <div style="font-size:12px;opacity:0.75;margin-bottom:8px;">TACTICAL MISSION TREE (HORIZONTAL)</div>
+        <div style="font-size:12px;opacity:0.75;margin-bottom:8px;" data-i18n="tactical_mission_tree">${getTranslation('tactical_mission_tree')}</div>
         <div id="missionTreeContainer" class="mission-tree-container"></div>
       </div>
-
-
 
       <button id="timelineEvaluateBtn"
         style="position:relative;overflow:hidden;width:100%;background:#0E0E0E;border:1px solid #FB7185;color:#FB7185;padding:16px 12px;border-radius:0;font-size:16px;font-weight:700;letter-spacing:0.04em;cursor:pointer;user-select:none;touch-action:none;">
         <div id="evaluateProgress" style="position:absolute;top:0;left:0;height:100%;width:0%;background:rgba(251,113,133,0.3);pointer-events:none;"></div>
-        <span style="position:relative;z-index:1;pointer-events:none;">[ HOLD TO EXECUTE EVALUATION PROTOCOL ]</span>
+        <span style="position:relative;z-index:1;pointer-events:none;" data-i18n="hold_to_execute">${getTranslation('hold_to_execute')}</span>
       </button>
 
       <div id="streakMilestoneOverlay">
@@ -345,7 +344,7 @@ export function renderDashboard(container) {
              </svg>
              <div class="streak-number-colossal" id="milestoneNumber">10</div>
           </div>
-          <div class="unlocked-text">DAY STREAK UNLOCKED!</div>
+          <div class="unlocked-text" data-i18n="day_streak_unlocked">${getTranslation('day_streak_unlocked')}</div>
         </div>
       </div>
     </section>

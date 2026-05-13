@@ -104,10 +104,10 @@ export async function renderAccount(container) {
   menuItems.forEach(item => {
     item.addEventListener('click', () => {
       const tabId = item.getAttribute('data-tab');
-      container.querySelectorAll('.settings-menu li').forEach(i => i.classList.remove('active'));
-      container.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.settings-menu li').forEach(i => i.classList.remove('active'));
+      document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
       item.classList.add('active');
-      const targetPane = container.querySelector('#' + tabId);
+      const targetPane = document.getElementById(tabId);
       if (targetPane) targetPane.classList.add('active');
     });
   });
@@ -123,9 +123,16 @@ export async function renderAccount(container) {
   // SAVE CHANGES
   const saveBtn = container.querySelector('#saveProfileBtn');
   if (saveBtn) {
-    saveBtn.addEventListener('click', async () => {
-      const display_name = container.querySelector('#editDisplayName').value.trim();
-      const bio = container.querySelector('#editBio').value.trim();
+    saveBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const display_name = document.querySelector('#editDisplayName').value.trim();
+      const bio = document.querySelector('#editBio').value.trim();
+      
+      if (!display_name) {
+          if (window.toast) window.toast("Display name cannot be empty", "error");
+          return;
+      }
+
       saveBtn.disabled = true;
       saveBtn.textContent = '...';
       try {

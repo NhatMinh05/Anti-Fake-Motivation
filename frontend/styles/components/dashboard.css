@@ -23,28 +23,9 @@
   box-shadow: 0 0 15px rgba(251, 113, 133, 0.4);
 }
 
-/* Rank chìm ở background */
-body::before {
-  content: attr(data-rank);
-  position: fixed;
-  bottom: -20px;
-  right: -20px;
-  font-size: 150px;
-  font-weight: 800;
-  color: rgba(255, 255, 255, 0.02);
-  z-index: -1;
-  pointer-events: none;
-  font-family: 'Geist', sans-serif;
-  letter-spacing: -5px;
-}
+/* Rank chìm ở background đã bị gỡ bỏ theo yêu cầu */
+/* body::before { ... } */
 
-body:not([data-rank])::before {
-  content: 'NOVICE';
-}
-
-[data-theme="vercel"] body::before {
-  color: rgba(0, 0, 0, 0.02);
-}
    STRICT TIMELINE MATRIX & PULSE STREAM
    ========================================= */
 
