@@ -63,10 +63,29 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // 2. Mock click cho các nút mới (Sẽ nối API thật sau)
-  document.getElementById('qrLoginBtn')?.addEventListener('click', () => alert('SYSTEM: Đang bật Camera quét sinh trắc học...'));
-  document.getElementById('forgotPass')?.addEventListener('click', () => alert('SYSTEM: Vui lòng liên hệ Admin để Override Passcode.'));
-  document.getElementById('enrollNew')?.addEventListener('click', () => alert('SYSTEM: Chế độ đăng ký đã được kích hoạt tự động. Chỉ cần nhập ID và Pass mới.'));
+  let isRegisterMode = false;
+  const enrollBtn = document.getElementById('enrollNew');
+  const btnAuth = document.getElementById('btnAuth');
+  const boxHeader = document.querySelector('.box-header');
+
+  enrollBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    isRegisterMode = !isRegisterMode;
+    if (isRegisterMode) {
+      btnAuth.textContent = 'SIGN UP';
+      boxHeader.textContent = '[ NEW OPERATIVE ENROLLMENT ]';
+      enrollBtn.textContent = '[ BACK TO LOGIN ]';
+      const muted = document.querySelector('.muted-text');
+      if (muted) muted.textContent = 'Existing Operative?';
+    } else {
+      btnAuth.textContent = 'LOG IN';
+      boxHeader.textContent = '[ SYSTEM AUTHENTICATION ]';
+      enrollBtn.textContent = '[ REGISTER ]';
+      const muted = document.querySelector('.muted-text');
+      if (muted) muted.textContent = 'New Operative?';
+    }
+  });
+
   console.log("SYSTEM: Authentication modules initialized.");
   
   // Nút GitHub và Google đã được xử lý trực tiếp bằng onclick trong HTML
@@ -82,11 +101,30 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     
-    msg.textContent = 'AUTHENTICATING...';
+    msg.textContent = isRegisterMode ? 'ENROLLING...' : 'AUTHENTICATING...';
     msg.style.color = '#38BDF8';
 
     try {
-      // Create x-www-form-urlencoded data required by OAuth2PasswordRequestForm
+      if (isRegisterMode) {
+        // EXPLICIT REGISTER
+        const regRes = await fetch('http://localhost:8000/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: u, password: p })
+        });
+        if (regRes.ok) {
+          msg.textContent = 'ENROLLMENT SUCCESS. LOGGING IN...';
+          msg.style.color = '#34d399';
+          // Fall through to login logic
+        } else {
+          const errData = await regRes.json();
+          msg.textContent = `ERR: ${errData.detail || 'ENROLLMENT FAILED'}`;
+          msg.style.color = '#fb7185';
+          return;
+        }
+      }
+
+      // LOGIN LOGIC
       const params = new URLSearchParams();
       params.append('username', u);
       params.append('password', p);
@@ -98,33 +136,31 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       if (!res.ok) {
-        // If login failed, maybe they are a new user. Let's auto-register them!
-        // This is a feature: "First time? You are registered."
-        msg.textContent = 'NOT FOUND. REGISTERING NEW OPERATIVE...';
-        
-        const regRes = await fetch('http://localhost:8000/api/auth/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: u, password: p })
-        });
-        
-        if (regRes.ok) {
-          msg.textContent = 'REGISTERED. LOGGING IN...';
-          // Try login again
-          const retryRes = await fetch('http://localhost:8000/api/auth/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: params.toString()
-          });
-          const retryData = await retryRes.json();
-          if (retryData.access_token) {
-            localStorage.setItem('access_token', retryData.access_token);
-            window.location.href = 'index.html';
-          }
-        } else {
-          msg.textContent = 'ACCESS DENIED: INVALID CREDENTIALS';
-          msg.style.color = '#fb7185';
+        if (!isRegisterMode) {
+           // Auto-register fallback for convenience if not in register mode
+           msg.textContent = 'NOT FOUND. TRYING AUTO-ENROLL...';
+           const regRes = await fetch('http://localhost:8000/api/auth/register', {
+             method: 'POST',
+             headers: { 'Content-Type': 'application/json' },
+             body: JSON.stringify({ username: u, password: p })
+           });
+           if (regRes.ok) {
+             // Try login again
+             const retryRes = await fetch('http://localhost:8000/api/auth/login', {
+               method: 'POST',
+               headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+               body: params.toString()
+             });
+             const retryData = await retryRes.json();
+             if (retryData.access_token) {
+               localStorage.setItem('access_token', retryData.access_token);
+               window.location.href = 'index.html';
+               return;
+             }
+           }
         }
+        msg.textContent = 'ACCESS DENIED: INVALID CREDENTIALS';
+        msg.style.color = '#fb7185';
       } else {
         const data = await res.json();
         if (data.access_token) {
