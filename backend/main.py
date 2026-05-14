@@ -67,6 +67,7 @@ class ScoreRecord(Base):
     delta = Column(Integer)      # +1 or -2
     notes = Column(Text, nullable=True)
     cumulative_score = Column(Integer)
+    target_date = Column(String(10), index=True) # YYYY-MM-DD
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
 
 
@@ -106,6 +107,12 @@ Base.metadata.create_all(bind=engine)
 
 # AUTO-MIGRATION: Thêm cột nếu chưa có
 with engine.connect() as conn:
+    # Check for ScoreRecord columns
+    try:
+        conn.execute(text("ALTER TABLE score_records ADD COLUMN target_date TEXT"))
+    except Exception: pass
+    
+    # Check for User columns
     for col in ["avatar_url", "display_name", "bio", "github_id", "google_id"]:
         try:
             conn.execute(text(f"ALTER TABLE users ADD COLUMN {col} TEXT"))
@@ -472,21 +479,103 @@ def disconnect_provider(provider: str, db: Session = Depends(get_db), current_us
     return {"message": f"Disconnected {provider}"}
 
 
+# ─── DISCIPLINE SYNC LOGIC ──────────────────────────────────────────────────
+
+def sync_missed_days(user_id: int, db: Session):
+    """Tự động kiểm tra và ghi nhận thất bại cho các ngày bỏ lỡ hoặc không có Mind Map"""
+    now_vn = datetime.utcnow() + timedelta(hours=7)
+    today_str = now_vn.strftime("%Y-%m-%d")
+    
+    # Lấy bản ghi cuối cùng
+    last_record = db.query(ScoreRecord).filter(
+        ScoreRecord.user_id == user_id, 
+        ScoreRecord.target_date != None
+    ).order_by(ScoreRecord.target_date.desc()).first()
+    
+    if not last_record: return
+
+    try:
+        last_date = datetime.strptime(last_record.target_date, "%Y-%m-%d")
+        current_date = datetime.strptime(today_str, "%Y-%m-%d")
+        
+        delta = (current_date - last_date).days
+        if delta > 1:
+            for i in range(1, delta):
+                check_date = last_date + timedelta(days=i)
+                check_str = check_date.strftime("%Y-%m-%d")
+                
+                # 1. Kiểm tra xem đã có record chưa
+                exists = db.query(ScoreRecord).filter(
+                    ScoreRecord.user_id == user_id, 
+                    ScoreRecord.target_date == check_str
+                ).first()
+                
+                if not exists:
+                    # 2. Kiểm tra Mind Map (Timeline Tasks)
+                    has_tasks = db.query(TimelineTask).filter(
+                        TimelineTask.user_id == user_id,
+                        TimelineTask.date == check_str
+                    ).first()
+                    
+                    reason = "SYSTEM: Missed execution deadline" if has_tasks else "SYSTEM: Mind Map not established"
+                    
+                    current_score = get_total_score(db, user_id)
+                    new_score = max(0, current_score - 2)
+                    
+                    fail_record = ScoreRecord(
+                        status="FAILURE",
+                        delta=-2,
+                        notes=reason,
+                        cumulative_score=new_score,
+                        user_id=user_id,
+                        target_date=check_str
+                    )
+                    db.add(fail_record)
+                    # Gãy chuỗi
+                    db.query(AppConfig).filter(
+                        AppConfig.key == "discipline_streak", 
+                        AppConfig.user_id == user_id
+                    ).update({"value": "0"})
+            db.commit()
+    except Exception as e:
+        print(f"Sync error: {e}")
+
 # ─── ENDPOINTS ────────────────────────────────────────────────────────────────
 
 @app.get("/api/score")
 def get_score(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    sync_missed_days(current_user.id, db)
     score = get_total_score(db, current_user.id)
     return {"total_score": score}
 
 
 @app.post("/api/log")
 def log_day(req: LogDayRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    if req.status not in ("SUCCESS", "FAILURE"):
-        raise HTTPException(status_code=400, detail="status must be SUCCESS or FAILURE")
+    now_vn = datetime.utcnow() + timedelta(hours=7)
+    today_str = now_vn.strftime("%Y-%m-%d")
+    
+    # 1. Kiểm tra Mind Map cho ngày hôm nay
+    has_tasks = db.query(TimelineTask).filter(
+        TimelineTask.user_id == current_user.id,
+        TimelineTask.date == today_str
+    ).first()
+    
+    if not has_tasks:
+        raise HTTPException(status_code=400, detail="CRITICAL: Mind Map (Timeline) must be established before execution.")
+
+    # 2. Kiểm tra xem hôm nay đã Execute chưa
+    existing = db.query(ScoreRecord).filter(
+        ScoreRecord.user_id == current_user.id,
+        ScoreRecord.target_date == today_str
+    ).first()
+    
+    if existing:
+        raise HTTPException(status_code=400, detail="Protocol already executed for today.")
+
+    current_score = get_total_score(db, current_user.id)
     delta = 1 if req.status == "SUCCESS" else -2
-    current = get_total_score(db, current_user.id)
-    new_score = current + delta
+    new_score = max(0, current_score + delta)
+    
     record = ScoreRecord(
         status=req.status,
         delta=delta,
@@ -565,11 +654,21 @@ def toggle_task(task_id: int, db: Session = Depends(get_db)):
     if task.is_locked:
         raise HTTPException(status_code=409, detail="date already evaluated and locked")
 
-    task.is_completed = not task.is_completed
+    new_status = not task.is_completed
+    task.is_completed = new_status
+
+    # Đệ quy để cập nhật tất cả task con
+    def toggle_children(parent_id, status):
+        children = db.query(TimelineTask).filter(TimelineTask.parent_id == parent_id).all()
+        for child in children:
+            child.is_completed = status
+            toggle_children(child.id, status)
+
+    toggle_children(task.id, new_status)
+    
     db.commit()
     db.refresh(task)
     
-    # If a parent is completed, we could auto-complete children, but let's just return the task
     return {
         "id": task.id,
         "date": task.date,

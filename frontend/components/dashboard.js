@@ -322,10 +322,17 @@ export function renderDashboard(container) {
       </div>
 
       <button id="timelineEvaluateBtn"
-        style="position:relative;overflow:hidden;width:100%;background:#0E0E0E;border:1px solid #FB7185;color:#FB7185;padding:16px 12px;border-radius:0;font-size:16px;font-weight:700;letter-spacing:0.04em;cursor:pointer;user-select:none;touch-action:none;">
+        style="position:relative;overflow:hidden;width:100%;background:#0E0E0E;border:1px solid #FB7185;color:#FB7185;padding:16px 12px;border-radius:0;font-size:16px;font-weight:700;letter-spacing:0.04em;cursor:pointer;user-select:none;touch-action:none;transition: all 0.3s ease;">
         <div id="evaluateProgress" style="position:absolute;top:0;left:0;height:100%;width:0%;background:rgba(251,113,133,0.3);pointer-events:none;"></div>
-        <span style="position:relative;z-index:1;pointer-events:none;" data-i18n="hold_to_execute">${getTranslation('hold_to_execute')}</span>
+        <span id="evaluateBtnText" style="position:relative;z-index:1;pointer-events:none;" data-i18n="hold_to_execute">${getTranslation('hold_to_execute')}</span>
       </button>
+
+      <div id="mindmapWarning" style="margin-top:10px; padding:10px; background:rgba(251,113,133,0.1); border:1px solid #FB7185; color:#FB7185; font-size:11px; font-family:monospace; display:none;">
+        ⚠️ WARNING: NO MIND MAP DETECTED. AUTO-FAILURE AT 00:00.
+      </div>
+      <div id="executionLockedInfo" style="margin-top:10px; padding:10px; background:rgba(56,189,248,0.1); border:1px solid #38BDF8; color:#38BDF8; font-size:11px; font-family:monospace; display:none;">
+        📡 ARCHIVE MODE: PROTOCOL LOGGED FOR THIS DATE.
+      </div>
 
       <div id="streakMilestoneOverlay">
         <div class="milestone-content" id="milestoneContent">
@@ -626,22 +633,64 @@ export function renderDashboard(container) {
   }
 
   async function loadTasks() {
-    dateButton.textContent = toDisplayDate(state.selectedDate);
-    const tasks = await fetchTasks(state.selectedDate);
-    state.tasks = tasks;
-    state.locked = tasks.some(t => t.is_locked);
-    addBtn.disabled = state.locked;
-    taskInput.disabled = state.locked;
-    evaluateBtn.disabled = state.locked;
-    if (state.locked) {
-      evalStatus.textContent = `DATE ${state.selectedDate} LOCKED`;
+    try {
+      dateButton.textContent = toDisplayDate(state.selectedDate);
+      state.tasks = await fetchTasks(state.selectedDate);
+      state.locked = await isDateLocked(state.selectedDate);
+      
+      addBtn.disabled = state.locked;
+      taskInput.disabled = state.locked;
+      
+      renderTasks();
+      renderCalendar();
+      updateExecuteButtonState();
+    } catch (err) {
+      evalStatus.textContent = `ERROR: ${err.message}`;
       evalStatus.style.color = '#FB7185';
-    } else {
-      evalStatus.textContent = 'SYSTEM: READY';
-      evalStatus.style.color = '#38BDF8';
     }
-    renderTasks();
-    renderCalendar();
+  }
+
+  async function isDateLocked(dateStr) {
+    try {
+      const { api } = await import('../js/api.js');
+      const history = await api('/history?limit=100');
+      return history.some(h => h.target_date === dateStr);
+    } catch { return false; }
+  }
+
+  function updateExecuteButtonState() {
+    const today = formatDate(new Date());
+    const isToday = state.selectedDate === today;
+    const hasTasks = state.tasks.length > 0;
+    
+    const warning = root.querySelector('#mindmapWarning');
+    const lockedInfo = root.querySelector('#executionLockedInfo');
+    const btnText = root.querySelector('#evaluateBtnText');
+
+    if (state.locked) {
+      evaluateBtn.style.opacity = '0.5';
+      evaluateBtn.style.pointerEvents = 'none';
+      evaluateBtn.style.border = '1px solid #38BDF8';
+      evaluateBtn.style.color = '#38BDF8';
+      if (btnText) btnText.textContent = '[ PROTOCOL ARCHIVED ]';
+      if (lockedInfo) lockedInfo.style.display = 'block';
+      if (warning) warning.style.display = 'none';
+    } else if (!isToday) {
+      evaluateBtn.style.opacity = '0.5';
+      evaluateBtn.style.pointerEvents = 'none';
+      if (btnText) btnText.textContent = '[ OUT OF SYNC: TODAY ONLY ]';
+      if (lockedInfo) lockedInfo.style.display = 'none';
+      if (warning) warning.style.display = 'none';
+    } else {
+      evaluateBtn.style.opacity = '1';
+      evaluateBtn.style.pointerEvents = 'auto';
+      evaluateBtn.style.border = '1px solid #FB7185';
+      evaluateBtn.style.color = '#FB7185';
+      if (btnText) btnText.textContent = getTranslation('hold_to_execute');
+      
+      if (lockedInfo) lockedInfo.style.display = 'none';
+      if (warning) warning.style.display = hasTasks ? 'none' : 'block';
+    }
   }
 
   async function handleAddTask() {
@@ -799,94 +848,77 @@ export function renderDashboard(container) {
       isExecuting = true;
       if (evaluateProgress) evaluateProgress.style.width = '100%';
 
-      evaluateBtn.style.backgroundColor = '#FB7185';
-      evaluateBtn.style.color = '#131313';
-
-      document.body.classList.add('screen-shake');
-      setTimeout(() => document.body.classList.remove('screen-shake'), 300);
-
-      setTimeout(() => {
-        evaluateBtn.style.transform = 'scale(1)';
-        evaluateBtn.style.backgroundColor = '';
-        evaluateBtn.style.color = '';
-      }, 300);
-
-      await executeEvaluation();
-
-      isExecuting = false;
-      if (evaluateProgress) evaluateProgress.style.width = '0%';
+      try {
+        const { logDay } = await import('../js/api.js');
+        const res = await logDay("SUCCESS", "Protocol executed manually.");
+        
+        if (window.toast) window.toast('DISCIPLINE PROTOCOL COMMITTED.', 'success');
+        
+        const { fetchDashboardData } = await import('../js/api.js');
+        const newData = await fetchDashboardData();
+        updateScore(newData.scoreData.total_score);
+        localStorage.setItem('discipline_streak', newData.configData.discipline_streak);
+        updateRankUI(parseInt(newData.configData.discipline_streak));
+        updateShieldUI();
+        
+        await triggerMilestoneCelebration(parseInt(newData.configData.discipline_streak));
+        
+        // Reload tasks to show lock state
+        await loadTasks();
+        
+      } catch (err) {
+        if (window.toast) window.toast('EXECUTION FAILED: ' + err.message, 'error');
+        evalStatus.textContent = `PROTOCOL ERROR: ${err.message}`;
+        evalStatus.style.color = '#FB7185';
+      } finally {
+        isExecuting = false;
+        cancelHold();
+      }
     }, duration);
   }
 
-  async function executeEvaluation() {
+  async function isDateLocked(dateStr) {
+    // Check if there is already a score record for this date
     try {
-      const result = await evaluateDate(state.selectedDate);
+      const { api } = await import('../js/api.js');
+      const history = await api('/history?limit=100');
+      // Backend now stores target_date
+      return history.some(h => h.target_date === dateStr);
+    } catch { return false; }
+  }
 
-      let currentStreak = parseInt(localStorage.getItem('discipline_streak') || '0', 10);
-      let shields = parseInt(localStorage.getItem('streak_shields') || '0', 10);
-      const oldRank = getRankInfo(currentStreak).name;
-      const trigger = window.triggerAICoach || (() => { });
+  function updateExecuteButtonState() {
+    const today = formatDate(new Date());
+    const isToday = state.selectedDate === today;
+    const hasTasks = state.tasks.length > 0;
+    
+    const warning = root.querySelector('#mindmapWarning');
+    const lockedInfo = root.querySelector('#executionLockedInfo');
+    const btnText = root.querySelector('#evaluateBtnText');
 
-      if (result.status === 'SUCCESS') {
-        evalStatus.textContent = `SUCCESS: Cố gắng tốt lắm!`;
-        evalStatus.style.color = '#10B981';
-        currentStreak++;
-
-        const newRank = getRankInfo(currentStreak).name;
-        const pendingPromotionMessage =
-          newRank !== oldRank && PROMOTION_MESSAGES[newRank]
-            ? PROMOTION_MESSAGES[newRank]
-            : null;
-
-        await triggerMilestoneCelebration(currentStreak);
-
-        if (pendingPromotionMessage) {
-          trigger(pendingPromotionMessage, 'promotion');
-        }
-
-        if (currentStreak % 10 === 0) {
-          shields++;
-          trigger('🛡️ GIÁP BẢO VỆ ĐÃ ĐƯỢC CẤP! Ngươi có thêm một mạng sống.', 'info');
-        }
-      } else {
-        if (shields > 0) {
-          trigger(`CẢNH BÁO: Chuỗi ${currentStreak} ngày sắp nổ tung! Bạn có muốn dùng 🛡️ Giáp không?`, 'warning');
-          const useShield = confirm('THẤT BẠI! Bạn có muốn tiêu tốn 1 🛡️ GIÁP để giữ chuỗi không?');
-          if (useShield) {
-            shields--;
-            evalStatus.textContent = 'GIÁP ĐÃ KÍCH HOẠT! Chuỗi được bảo toàn.';
-            evalStatus.style.color = '#38bdf8';
-            trigger('🛡️ GIÁP ĐÃ KÍCH HOẠT. Chuỗi được bảo toàn thành công.', 'info');
-          } else {
-            currentStreak = 0;
-            const roast = ROAST_MESSAGES[Math.floor(Math.random() * ROAST_MESSAGES.length)];
-            evalStatus.textContent = `FAILURE: ${roast}`;
-            evalStatus.style.color = '#ff5b4f';
-            trigger(`FAILURE. ${roast}`, 'failure');
-          }
-        } else {
-          currentStreak = 0;
-          const roast = ROAST_MESSAGES[Math.floor(Math.random() * ROAST_MESSAGES.length)];
-          evalStatus.textContent = `FAILURE: ${roast}`;
-          evalStatus.style.color = '#ff5b4f';
-          trigger('FAILURE. Bạn không có giáp. Chuỗi đã nổ tung.', 'failure');
-        }
-      }
-
-      localStorage.setItem('discipline_streak', currentStreak.toString());
-      localStorage.setItem('streak_shields', shields.toString());
-      updateConfig({ discipline_streak: currentStreak, streak_shields: shields }).catch(console.error);
-      const streakEl = document.getElementById('streakCount');
-      if (streakEl) streakEl.textContent = String(currentStreak);
-      updateRankUI(currentStreak);
-      updateShieldUI();
-
-      updateScore(result.cumulative_score);
-      await loadTasks();
-      window.dispatchEvent(new CustomEvent('dashboard:evaluated', { detail: result }));
-    } catch (err) {
-      evalStatus.textContent = `ERROR: ${err.message}`;
-      evalStatus.style.color = '#FB7185';
+    if (state.locked) {
+      evaluateBtn.style.opacity = '0.5';
+      evaluateBtn.style.pointerEvents = 'none';
+      evaluateBtn.style.border = '1px solid #38BDF8';
+      evaluateBtn.style.color = '#38BDF8';
+      btnText.textContent = '[ PROTOCOL ARCHIVED ]';
+      if (lockedInfo) lockedInfo.style.display = 'block';
+      if (warning) warning.style.display = 'none';
+    } else if (!isToday) {
+      evaluateBtn.style.opacity = '0.5';
+      evaluateBtn.style.pointerEvents = 'none';
+      btnText.textContent = '[ OUT OF SYNC: TODAY ONLY ]';
+      if (lockedInfo) lockedInfo.style.display = 'none';
+      if (warning) warning.style.display = 'none';
+    } else {
+      evaluateBtn.style.opacity = '1';
+      evaluateBtn.style.pointerEvents = 'auto';
+      evaluateBtn.style.border = '1px solid #FB7185';
+      evaluateBtn.style.color = '#FB7185';
+      btnText.textContent = getTranslation('hold_to_execute');
+      
+      if (lockedInfo) lockedInfo.style.display = 'none';
+      if (warning) warning.style.display = hasTasks ? 'none' : 'block';
     }
   }
 
