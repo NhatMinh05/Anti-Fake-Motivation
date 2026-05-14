@@ -359,7 +359,7 @@ export function renderDashboard(container) {
   const evaluateBtn = root.querySelector('#timelineEvaluateBtn');
   const evalStatus = root.querySelector('#dashboardEvalStatus');
   const treeContainer = root.querySelector('#missionTreeContainer');
-  
+
   const toggleBraindumpBtn = root.querySelector('#toggleBraindumpBtn');
   const braindumpPanel = root.querySelector('#braindumpPanel');
   const braindumpText = root.querySelector('#braindumpText');
@@ -385,9 +385,9 @@ export function renderDashboard(container) {
   function buildTreeHTML(task, childrenMap) {
     const children = childrenMap[task.id] || [];
     const hasChildren = children.length > 0;
-    
+
     const nodeClass = `tree-node ${task.is_completed ? 'completed' : ''} tree-node-box ${hasChildren ? 'has-children' : ''}`;
-    
+
     const nodeHTML = `
       <div class="${nodeClass}" data-task-id="${task.id}" data-parent-id="${task.parent_id || ''}" draggable="${!state.locked}" style="${state.locked ? 'cursor:not-allowed;' : 'cursor:grab;'}">
         <div class="node-icon">${task.is_completed ? '☑' : '☐'}</div>
@@ -440,7 +440,7 @@ export function renderDashboard(container) {
       node.addEventListener('click', async (e) => {
         if (e.target.closest('.node-delete')) return;
         if (state.locked) return;
-        
+
         const id = Number(node.getAttribute('data-task-id'));
         try {
           await toggleTask(id);
@@ -466,7 +466,7 @@ export function renderDashboard(container) {
         }
       });
     });
-    
+
     // Bind Drag and Drop Events
     if (state.locked) return;
 
@@ -494,7 +494,7 @@ export function renderDashboard(container) {
         e.preventDefault();
         e.stopPropagation();
         e.dataTransfer.dropEffect = 'move';
-        
+
         const rect = dropZone.getBoundingClientRect();
         // If mouse is in the right half of the node, intent is child
         if (e.clientX > rect.right - (rect.width / 2)) {
@@ -505,7 +505,7 @@ export function renderDashboard(container) {
           dropZone.classList.remove('drop-intent-child');
         }
       });
-      
+
       dropZone.addEventListener('dragleave', () => {
         dropZone.classList.remove('drop-intent-child', 'drop-intent-sibling');
       });
@@ -513,10 +513,10 @@ export function renderDashboard(container) {
       dropZone.addEventListener('drop', async (e) => {
         e.preventDefault();
         e.stopPropagation();
-        
+
         const isChildIntent = dropZone.classList.contains('drop-intent-child');
         dropZone.classList.remove('drop-intent-child', 'drop-intent-sibling');
-        
+
         if (!draggedId) return;
 
         const targetNodeId = Number(dropZone.getAttribute('data-task-id'));
@@ -526,10 +526,10 @@ export function renderDashboard(container) {
         // If intent is sibling, parent_id = targetNode's parent_id (null if root)
         let parentId = null;
         if (isChildIntent) {
-           parentId = targetNodeId;
+          parentId = targetNodeId;
         } else {
-           const pIdStr = dropZone.getAttribute('data-parent-id');
-           parentId = pIdStr ? Number(pIdStr) : null;
+          const pIdStr = dropZone.getAttribute('data-parent-id');
+          parentId = pIdStr ? Number(pIdStr) : null;
         }
 
         try {
@@ -559,7 +559,7 @@ export function renderDashboard(container) {
     treeContainer.addEventListener('drop', async (e) => {
       e.preventDefault();
       treeContainer.classList.remove('drag-over-empty');
-      
+
       if (!draggedId) return;
       if (e.target.closest('.tree-node')) return; // handled by node drop
 
@@ -675,10 +675,10 @@ export function renderDashboard(container) {
   processBraindumpBtn.addEventListener('click', async () => {
     const text = braindumpText.value.trim();
     if (!text || state.locked) return;
-    
+
     processBraindumpBtn.innerHTML = '<span class="ai-pulse-text">AI IS ARCHITECTING...</span>';
     processBraindumpBtn.disabled = true;
-    
+
     try {
       await braindumpTasks(state.selectedDate, text);
       braindumpText.value = '';
@@ -762,15 +762,15 @@ export function renderDashboard(container) {
     clearTimeout(holdTimer);
     clearInterval(progressInterval);
     if (evaluateProgress) {
-        evaluateProgress.style.transition = 'width 0.3s ease';
-        evaluateProgress.style.width = '0%';
+      evaluateProgress.style.transition = 'width 0.3s ease';
+      evaluateProgress.style.width = '0%';
     }
     evaluateBtn.style.transform = 'scale(1)';
   }
 
   evaluateBtn.addEventListener('mousedown', startHold);
   evaluateBtn.addEventListener('touchstart', startHold);
-  
+
   evaluateBtn.addEventListener('mouseup', cancelHold);
   evaluateBtn.addEventListener('mouseleave', cancelHold);
   evaluateBtn.addEventListener('touchend', cancelHold);
@@ -778,43 +778,43 @@ export function renderDashboard(container) {
   function startHold(e) {
     if (e.type === 'mousedown' && e.button !== 0) return;
     if (state.locked || isExecuting) return;
-    
+
     evaluateBtn.style.transform = 'scale(0.98)';
     if (evaluateProgress) {
       evaluateProgress.style.transition = 'none';
       evaluateProgress.style.width = '0%';
     }
-    
+
     let start = Date.now();
     const duration = 2000;
-    
+
     progressInterval = setInterval(() => {
-        let elapsed = Date.now() - start;
-        let percent = Math.min((elapsed / duration) * 100, 100);
-        if (evaluateProgress) evaluateProgress.style.width = `${percent}%`;
+      let elapsed = Date.now() - start;
+      let percent = Math.min((elapsed / duration) * 100, 100);
+      if (evaluateProgress) evaluateProgress.style.width = `${percent}%`;
     }, 16);
 
     holdTimer = setTimeout(async () => {
-        clearInterval(progressInterval);
-        isExecuting = true;
-        if (evaluateProgress) evaluateProgress.style.width = '100%';
-        
-        evaluateBtn.style.backgroundColor = '#FB7185';
-        evaluateBtn.style.color = '#131313';
-        
-        document.body.classList.add('screen-shake');
-        setTimeout(() => document.body.classList.remove('screen-shake'), 300);
-        
-        setTimeout(() => {
-          evaluateBtn.style.transform = 'scale(1)';
-          evaluateBtn.style.backgroundColor = '';
-          evaluateBtn.style.color = '';
-        }, 300);
+      clearInterval(progressInterval);
+      isExecuting = true;
+      if (evaluateProgress) evaluateProgress.style.width = '100%';
 
-        await executeEvaluation();
-        
-        isExecuting = false;
-        if (evaluateProgress) evaluateProgress.style.width = '0%';
+      evaluateBtn.style.backgroundColor = '#FB7185';
+      evaluateBtn.style.color = '#131313';
+
+      document.body.classList.add('screen-shake');
+      setTimeout(() => document.body.classList.remove('screen-shake'), 300);
+
+      setTimeout(() => {
+        evaluateBtn.style.transform = 'scale(1)';
+        evaluateBtn.style.backgroundColor = '';
+        evaluateBtn.style.color = '';
+      }, 300);
+
+      await executeEvaluation();
+
+      isExecuting = false;
+      if (evaluateProgress) evaluateProgress.style.width = '0%';
     }, duration);
   }
 

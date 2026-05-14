@@ -136,3 +136,9 @@ export async function fetchIntel(timeframe = 30) {
     body: JSON.stringify({ timeframe })
   });
 }
+
+export async function disconnectProvider(provider) {
+  return api(`/auth/disconnect/${provider}`, {
+    method: 'POST'
+  });
+}

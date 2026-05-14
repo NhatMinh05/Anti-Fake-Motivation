@@ -1,5 +1,5 @@
 import { state, getActiveConversation } from './state.js';
-import { api, fetchDashboardData, logDay, resetScore, setPersonalityMode, updateConfig, fetchIntel, getMe, logout } from './api.js';
+import { api, fetchDashboardData, logDay, resetScore, setPersonalityMode, updateConfig, fetchIntel, braindumpTasks, moveTask, disconnectProvider, getMe, logout } from './api.js';
 import { renderSidebar, bindSidebarNavigation } from '../components/sidebar.js';
 import { renderDashboard, updateScore } from '../components/dashboard.js';
 import { renderIntelFeed } from '../components/intelFeed.js';
@@ -895,7 +895,32 @@ async function start() {
   renderConversationList();
   renderActiveConversation();
   bindEvents();
-  showSection('mission');
+  
+  // URL Parameter Handling
+  const params = new URLSearchParams(window.location.search);
+  const tab = params.get('tab');
+  const status = params.get('status');
+  const error = params.get('error');
+
+  if (tab) {
+    showSection(tab);
+    // Remove params from URL without reload
+    window.history.replaceState({}, document.title, window.location.pathname);
+  } else {
+    showSection('mission');
+  }
+
+  if (status === 'linked') {
+    if (window.toast) window.toast('CORE_LINK: Identity verification successful.', 'success');
+  }
+  if (error) {
+    const errorMsgs = {
+      github_already_linked: 'PROTOCOL ERROR: GitHub account already linked to another operative.',
+      google_already_linked: 'PROTOCOL ERROR: Google account already linked to another operative.'
+    };
+    if (window.toast) window.toast(errorMsgs[error] || 'LINKING FAILED: ' + error, 'error');
+  }
+
   showSkeletons();
   startClock();
   await _refreshAll(); // call directly (not debounced) on first load

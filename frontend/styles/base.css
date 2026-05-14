@@ -16,34 +16,38 @@
 
 /* Kích thước của thanh cuộn */
 ::-webkit-scrollbar {
-    width: 8px;  /* Độ rộng của thanh cuộn dọc */
-    height: 8px; /* Độ cao của thanh cuộn ngang */
+  width: 8px;
+  /* Độ rộng của thanh cuộn dọc */
+  height: 8px;
+  /* Độ cao của thanh cuộn ngang */
 }
 
 /* Rãnh trượt (phần nền phía sau) */
 ::-webkit-scrollbar-track {
-    background: #0a0a0f; 
-    border-radius: 4px;
+  background: #0a0a0f;
+  border-radius: 4px;
 }
 
 /* Con trỏ trượt (phần mình nắm kéo) */
 ::-webkit-scrollbar-thumb {
-    background: #1a1a2e; /* Màu tối chìm vào nền */
-    border-radius: 4px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    transition: background 0.3s ease;
+  background: #1a1a2e;
+  /* Màu tối chìm vào nền */
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: background 0.3s ease;
 }
 
 /* Hiệu ứng khi di chuột vào con trỏ trượt */
 ::-webkit-scrollbar-thumb:hover {
-    background: var(--neon-primary, #00f2ff); /* Dùng luôn biến màu Theme */
-    box-shadow: 0 0 10px var(--neon-glow, rgba(0, 242, 255, 0.4));
+  background: var(--neon-primary, #00f2ff);
+  /* Dùng luôn biến màu Theme */
+  box-shadow: 0 0 10px var(--neon-glow, rgba(0, 242, 255, 0.4));
 }
 
 /* Hỗ trợ thêm cho trình duyệt Firefox */
 * {
-    scrollbar-width: thin;
-    scrollbar-color: #1a1a2e #0a0a0f;
+  scrollbar-width: thin;
+  scrollbar-color: #1a1a2e #0a0a0f;
 }
 
 * {

@@ -1,4 +1,4 @@
-import { getMe, updateMe, deleteMe, logout } from '/js/api.js';
+import { getMe, updateMe, deleteMe, logout, disconnectProvider } from '/js/api.js';
 import { setLanguage, getTranslation } from '/js/i18n.js';
 
 export async function renderAccount(container) {
@@ -11,7 +11,7 @@ export async function renderAccount(container) {
   }
 
   const avatar = user.avatar_url || `https://api.dicebear.com/7.x/pixel-art/svg?seed=${user.username}`;
-  
+
   container.innerHTML = `
     <div id="account" class="section hidden">
       <header class="section-header">
@@ -39,7 +39,8 @@ export async function renderAccount(container) {
                   <img src="${avatar}" id="preview-avatar">
                   <div class="status-badge">ACTIVE</div>
                 </div>
-                <button class="btn-outline">UPLOAD NEW IMAGE</button>
+                <button class="btn-outline" id="uploadAvatarBtn">UPLOAD NEW IMAGE</button>
+                <input type="file" id="avatarFileInput" accept="image/*" style="display: none;">
               </div>
               <div class="info-section">
                 <div class="form-group">
@@ -65,11 +66,11 @@ export async function renderAccount(container) {
               <h3>Connected Accounts</h3>
               <div class="social-link-item">
                 <div class="social-info">GITHUB</div>
-                <button class="btn-disconnect">DISCONNECT</button>
+                ${user.github_id ? '<button class="btn-disconnect" id="unlinkGithubBtn">DISCONNECT</button>' : '<button class="btn-outline" id="linkGithubBtn">CONNECT</button>'}
               </div>
               <div class="social-link-item">
                 <div class="social-info">GOOGLE</div>
-                <button class="btn-outline">LINKED</button>
+                ${user.google_id ? '<button class="btn-disconnect" id="unlinkGoogleBtn">DISCONNECT</button>' : '<button class="btn-outline" id="linkGoogleBtn">CONNECT</button>'}
               </div>
             </div>
           </section>
@@ -127,10 +128,10 @@ export async function renderAccount(container) {
       e.preventDefault();
       const display_name = document.querySelector('#editDisplayName').value.trim();
       const bio = document.querySelector('#editBio').value.trim();
-      
+
       if (!display_name) {
-          if (window.toast) window.toast("Display name cannot be empty", "error");
-          return;
+        if (window.toast) window.toast("Display name cannot be empty", "error");
+        return;
       }
 
       saveBtn.disabled = true;
@@ -159,6 +160,88 @@ export async function renderAccount(container) {
         logout();
       } catch (e) {
         alert('Error');
+      }
+    });
+  }
+
+  // AVATAR UPLOAD
+  const uploadBtn = container.querySelector('#uploadAvatarBtn');
+  const fileInput = container.querySelector('#avatarFileInput');
+  const previewImg = container.querySelector('#preview-avatar');
+
+  if (uploadBtn && fileInput) {
+    uploadBtn.addEventListener('click', () => fileInput.click());
+    
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      if (file.size > 2 * 1024 * 1024) {
+        if (window.toast) window.toast('File too large (Max 2MB)', 'error');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const base64 = event.target.result;
+        previewImg.src = base64;
+        
+        try {
+          await updateMe({ avatar_url: base64 });
+          if (window.toast) window.toast('Identity visual updated', 'success');
+          
+          // Update sidebar avatar if exists
+          const sideAvatar = document.getElementById('sideAvatar');
+          if (sideAvatar) sideAvatar.src = base64;
+        } catch (err) {
+          if (window.toast) window.toast('Update failed', 'error');
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // --- SOCIAL ACCOUNT LINKING ---
+  const token = localStorage.getItem('access_token');
+
+  // GitHub
+  const linkGithubBtn = container.querySelector('#linkGithubBtn');
+  const unlinkGithubBtn = container.querySelector('#unlinkGithubBtn');
+  if (linkGithubBtn) {
+    linkGithubBtn.addEventListener('click', () => {
+      window.location.href = `http://127.0.0.1:8000/api/auth/github/login?token=${token}`;
+    });
+  }
+  if (unlinkGithubBtn) {
+    unlinkGithubBtn.addEventListener('click', async () => {
+      if (!confirm('Disconnect GitHub account?')) return;
+      try {
+        await disconnectProvider('github');
+        if (window.toast) window.toast('GitHub disconnected', 'success');
+        setTimeout(() => window.location.reload(), 1000);
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    });
+  }
+
+  // Google
+  const linkGoogleBtn = container.querySelector('#linkGoogleBtn');
+  const unlinkGoogleBtn = container.querySelector('#unlinkGoogleBtn');
+  if (linkGoogleBtn) {
+    linkGoogleBtn.addEventListener('click', () => {
+      window.location.href = `http://127.0.0.1:8000/api/auth/google/login?token=${token}`;
+    });
+  }
+  if (unlinkGoogleBtn) {
+    unlinkGoogleBtn.addEventListener('click', async () => {
+      if (!confirm('Disconnect Google account?')) return;
+      try {
+        await disconnectProvider('google');
+        if (window.toast) window.toast('Google disconnected', 'success');
+        setTimeout(() => window.location.reload(), 1000);
+      } catch (err) {
+        alert('Error: ' + err.message);
       }
     });
   }

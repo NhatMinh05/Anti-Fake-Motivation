@@ -97,22 +97,19 @@ class User(Base):
     avatar_url = Column(Text, nullable=True)
     display_name = Column(String(64), nullable=True) # Tên hiển thị
     bio = Column(Text, nullable=True) # Châm ngôn / Tiểu sử
+    github_id = Column(String(64), unique=True, index=True, nullable=True)
+    google_id = Column(String(64), unique=True, index=True, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
 Base.metadata.create_all(bind=engine)
 
-# AUTO-MIGRATION: Thêm cột avatar_url nếu chưa có (để tránh lỗi Internal Server Error)
+# AUTO-MIGRATION: Thêm cột nếu chưa có
 with engine.connect() as conn:
-    try:
-        conn.execute(text("ALTER TABLE users ADD COLUMN avatar_url TEXT"))
-    except Exception: pass
-    try:
-        conn.execute(text("ALTER TABLE users ADD COLUMN display_name TEXT"))
-    except Exception: pass
-    try:
-        conn.execute(text("ALTER TABLE users ADD COLUMN bio TEXT"))
-    except Exception: pass
+    for col in ["avatar_url", "display_name", "bio", "github_id", "google_id"]:
+        try:
+            conn.execute(text(f"ALTER TABLE users ADD COLUMN {col} TEXT"))
+        except Exception: pass
     conn.commit()
 
 
@@ -265,7 +262,9 @@ def get_me(current_user: User = Depends(get_current_user)):
         "username": current_user.username,
         "display_name": current_user.display_name or current_user.username,
         "avatar_url": current_user.avatar_url,
-        "bio": current_user.bio or ""
+        "bio": current_user.bio or "",
+        "github_id": current_user.github_id,
+        "google_id": current_user.google_id
     }
 
 
@@ -296,25 +295,19 @@ def delete_me(db: Session = Depends(get_db), current_user: User = Depends(get_cu
 
 
 @app.get("/api/auth/github/login")
-def github_login():
-    # Kiểm tra xem đã lấy được ID thật chưa
-    if not GITHUB_CLIENT_ID or GITHUB_CLIENT_ID == "your_github_client_id_here":
-        return {"error": "Lỗi: Chưa nhận được Client ID thật từ file .env"}
-        
-    url = f"https://github.com/login/oauth/authorize?client_id={GITHUB_CLIENT_ID}&redirect_uri={GITHUB_REDIRECT_URI}&scope=user:email"
+def github_login(token: Optional[str] = None):
+    from urllib.parse import quote
+    state = f"link:{token}" if token else "login"
+    quoted_state = quote(state)
+    url = f"https://github.com/login/oauth/authorize?client_id={GITHUB_CLIENT_ID}&redirect_uri={GITHUB_REDIRECT_URI}&scope=user:email&state={quoted_state}"
     return RedirectResponse(url)
 
 
 @app.get("/api/auth/github/callback")
-async def github_callback(code: Optional[str] = None, error: Optional[str] = None, db: Session = Depends(get_db)):
-    # 1. Nếu người dùng bấm Cancel hoặc có lỗi từ GitHub (không có code)
+async def github_callback(code: Optional[str] = None, state: Optional[str] = "login", db: Session = Depends(get_db)):
     if not code:
-        # Chuyển hướng họ quay lại trang login thay vì hiện lỗi JSON
         return RedirectResponse(url="http://127.0.0.1:5500/login.html?status=denied")
 
-    # 2. Nếu có code (người dùng bấm Agree), tiếp tục xử lý đổi token...
-
-    # Exchange code for access token
     async with httpx.AsyncClient() as client:
         token_res = await client.post(
             "https://github.com/login/oauth/access_token",
@@ -329,44 +322,61 @@ async def github_callback(code: Optional[str] = None, error: Optional[str] = Non
         token_data = token_res.json()
         access_token = token_data.get("access_token")
         if not access_token:
-            return HTMLResponse(content="<h2>GitHub Auth Failed: Invalid Code</h2>", status_code=400)
+            return HTMLResponse(content=f"<h2>GitHub Auth Failed: {token_data.get('error_description', 'No access token')}</h2>", status_code=400)
 
-        # Get user info
         user_res = await client.get(
             "https://api.github.com/user",
             headers={"Authorization": f"token {access_token}"},
         )
         user_data = user_res.json()
-        github_username = user_data.get("login")
-        avatar_url = user_data.get("avatar_url") # Lấy ảnh đại diện GitHub
-        
-        if not github_username:
-            return HTMLResponse(content="<h2>GitHub Auth Failed: Could not get user info</h2>", status_code=400)
+        github_id = str(user_data.get("id"))
+        username = user_data.get("login")
+        avatar_url = user_data.get("avatar_url")
 
-        # Find or create user
-        username = f"gh_{github_username}"
-        user = db.query(User).filter(User.username == username).first()
+        # Handle Linking
+        if state.startswith("link:"):
+            token_to_link = state.split(":", 1)[1]
+            try:
+                payload = jwt.decode(token_to_link, SECRET_KEY, algorithms=[ALGORITHM])
+                current_username = payload.get("sub")
+                user = db.query(User).filter(User.username == current_username).first()
+                if user:
+                    # Check if this GitHub ID is already linked to someone else
+                    existing = db.query(User).filter(User.github_id == github_id).first()
+                    if existing and existing.id != user.id:
+                        return RedirectResponse(url="http://127.0.0.1:5500/index.html?error=github_already_linked")
+                    
+                    user.github_id = github_id
+                    db.commit()
+                    return RedirectResponse(url="http://127.0.0.1:5500/index.html?tab=account&status=linked")
+            except JWTError:
+                pass
+
+        # Handle Login/Signup
+        user = db.query(User).filter(User.github_id == github_id).first()
         if not user:
-            user = User(username=username, hashed_password=hash_password(secrets.token_hex(16)), avatar_url=avatar_url)
-            db.add(user)
+            # Fallback to username for old accounts or new ones
+            user = db.query(User).filter(User.username == username).first()
+            if not user:
+                user = User(username=username, hashed_password=hash_password(secrets.token_hex(16)), avatar_url=avatar_url, github_id=github_id)
+                db.add(user)
+            else:
+                user.github_id = github_id
         else:
             user.avatar_url = avatar_url
             
         db.commit()
         db.refresh(user)
 
-        # Create our own JWT
         token = create_access_token({"sub": user.username})
-        
-        # Chuyển hướng về frontend kèm theo Token trên URL để frontend tự lưu
         return RedirectResponse(url=f"http://127.0.0.1:5500/index.html?token={token}")
 
 
 @app.get("/api/auth/google/login")
-def google_login():
-    if not GOOGLE_CLIENT_ID or GOOGLE_CLIENT_ID == "your_google_client_id_here":
-        return {"error": "Lỗi: Chưa nhận được Google Client ID thật từ file .env"}
-    
+def google_login(token: Optional[str] = None):
+    from urllib.parse import quote
+    state = f"link:{token}" if token else "login"
+    quoted_state = quote(state)
     url = (
         "https://accounts.google.com/o/oauth2/v2/auth"
         f"?client_id={GOOGLE_CLIENT_ID}"
@@ -374,12 +384,13 @@ def google_login():
         "&response_type=code"
         "&scope=openid%20email%20profile"
         "&access_type=offline"
+        f"&state={quoted_state}"
     )
     return RedirectResponse(url)
 
 
 @app.get("/api/auth/google/callback")
-async def google_callback(code: Optional[str] = None, error: Optional[str] = None, db: Session = Depends(get_db)):
+async def google_callback(code: Optional[str] = None, state: Optional[str] = "login", db: Session = Depends(get_db)):
     if not code:
         return RedirectResponse(url="http://127.0.0.1:5500/login.html?status=denied")
 
@@ -406,20 +417,39 @@ async def google_callback(code: Optional[str] = None, error: Optional[str] = Non
             headers={"Authorization": f"Bearer {access_token}"},
         )
         user_data = user_res.json()
+        google_id = str(user_data.get("sub"))
         email = user_data.get("email")
-        picture = user_data.get("picture") # Lấy ảnh đại diện Google
+        picture = user_data.get("picture")
 
-        if not email:
-            return HTMLResponse(content="<h2>Google Auth Failed: Could not get email</h2>", status_code=400)
+        # Handle Linking
+        if state.startswith("link:"):
+            token_to_link = state.split(":", 1)[1]
+            try:
+                payload = jwt.decode(token_to_link, SECRET_KEY, algorithms=[ALGORITHM])
+                current_username = payload.get("sub")
+                user = db.query(User).filter(User.username == current_username).first()
+                if user:
+                    existing = db.query(User).filter(User.google_id == google_id).first()
+                    if existing and existing.id != user.id:
+                        return RedirectResponse(url="http://127.0.0.1:5500/index.html?error=google_already_linked")
+                    
+                    user.google_id = google_id
+                    db.commit()
+                    return RedirectResponse(url="http://127.0.0.1:5500/index.html?tab=account&status=linked")
+            except JWTError:
+                pass
 
-        # Use email as username (prefixed)
-        username = f"google_{email}"
-        user = db.query(User).filter(User.username == username).first()
+        # Handle Login/Signup
+        user = db.query(User).filter(User.google_id == google_id).first()
         if not user:
-            user = User(username=username, hashed_password=hash_password(secrets.token_hex(16)), avatar_url=picture)
-            db.add(user)
+            username = f"google_{email}"
+            user = db.query(User).filter(User.username == username).first()
+            if not user:
+                user = User(username=username, hashed_password=hash_password(secrets.token_hex(16)), avatar_url=picture, google_id=google_id)
+                db.add(user)
+            else:
+                user.google_id = google_id
         else:
-            # Cập nhật ảnh đại diện mới nhất
             user.avatar_url = picture
 
         db.commit()
@@ -427,6 +457,19 @@ async def google_callback(code: Optional[str] = None, error: Optional[str] = Non
 
         token = create_access_token({"sub": user.username})
         return RedirectResponse(url=f"http://127.0.0.1:5500/index.html?token={token}")
+
+
+@app.post("/api/auth/disconnect/{provider}")
+def disconnect_provider(provider: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if provider == "github":
+        current_user.github_id = None
+    elif provider == "google":
+        current_user.google_id = None
+    else:
+        raise HTTPException(status_code=400, detail="Invalid provider")
+    
+    db.commit()
+    return {"message": f"Disconnected {provider}"}
 
 
 # ─── ENDPOINTS ────────────────────────────────────────────────────────────────
